@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_comment": "Gemini CLI MCP 配置模板 - 用于 Librarian 代理的网络搜索能力",
+  "mcpServers": {
+    "context7": {
+      "_description": "官方文档查询 - 快速获取库/框架的最新文档",
+      "httpUrl": "https://mcp.context7.com/mcp"
+    },
+    "websearch": {
+      "_description": "Exa 网络搜索 - 获取最新的网络信息",
+      "httpUrl": "https://mcp.exa.ai/mcp?tools=web_search_exa"
+    },
+    "github": {
+      "_description": "GitHub 搜索和操作 - 需要设置 GITHUB_PERSONAL_ACCESS_TOKEN",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    },
+    "firecrawl": {
+      "_description": "Firecrawl 网页抓取 - 需要设置 FIRECRAWL_API_KEY",
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
+      }
+    }
+  }
+}

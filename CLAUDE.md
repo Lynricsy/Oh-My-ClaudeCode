@@ -22,7 +22,25 @@ Claude (Opus)     →  架构师 + 初审官 + 终审官 + 协调者
 Coder (可配置)    →  代码执行者（生成、修改、批量任务）
 Codex (OpenAI)    →  独立代码审核者（质量把关）
 Gemini (可选)     →  多面手专家（架构设计、第二意见、前端/UI）
+Librarian (Gemini 3 Flash) → 深度研究专家（代码搜索 + 网络研究 + 文档查询）
+Looker (Gemini 3 Flash) → 多模态分析专家（PDF/图片/图表分析）
 ```
+
+### Librarian 网络研究能力
+
+Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
+
+| MCP | 功能 |
+|-----|------|
+| **context7** | 官方文档查询（快速获取库/框架文档） |
+| **websearch** | Exa 网络搜索（获取最新网络信息） |
+| **github** | GitHub 搜索（代码示例、issues、PRs） |
+| **firecrawl** | 网页抓取（深入阅读网页内容） |
+
+使用场景：
+- "React useEffect 的最佳实践" → context7 + websearch
+- "找到 TanStack Query 的 useQuery 实现" → github
+- "为什么 Zod 报这个错误" → websearch + github issues
 
 ## 项目结构
 
@@ -36,7 +54,9 @@ Coder-Codex-Gemini/
 │   └── tools/
 │       ├── coder.py          # Coder 工具
 │       ├── codex.py          # Codex 工具
-│       └── gemini.py         # Gemini 工具
+│       ├── gemini.py         # Gemini 工具
+│       ├── librarian.py      # Librarian 工具（深度研究）
+│       └── looker.py         # Looker 工具（多模态分析）
 ├── skills/                   # Skills 工作流指导
 │   ├── ccg-workflow/         # CCG 协作流程
 │   └── gemini-collaboration/ # Gemini 协作指南
@@ -68,9 +88,13 @@ Coder-Codex-Gemini/
 
 ### MCP 工具
 
-- `coder`: 调用可配置后端模型执行代码生成/修改，默认 `workspace-write`
-- `codex`: 调用 Codex 进行代码审核，默认 `read-only`
-- `gemini`: 调用 Gemini CLI 进行专家咨询或代码执行，默认 `workspace-write`
+| 工具 | 功能 | 模型 | sandbox | 
+|------|------|------|---------|
+| `coder` | 代码生成/修改 | 可配置 | workspace-write |
+| `codex` | 代码审核 | OpenAI Codex | read-only |
+| `gemini` | 专家咨询/执行 | gemini-3-pro | workspace-write |
+| `librarian` | 深度研究（代码+网络+文档） | gemini-3-flash | read-only |
+| `looker` | 多模态分析（PDF/图片） | gemini-3-flash | read-only |
 
 ### 核心特性
 
@@ -94,6 +118,8 @@ Coder-Codex-Gemini/
 - **Codex**：默认允许 1 次重试（只读操作无副作用）
 - **Coder**：默认不重试（有写入副作用），可通过 `max_retries` 显式启用
 - **Gemini**：默认允许 1 次重试
+- **Librarian**：默认允许 1 次重试（只读操作无副作用）
+- **Looker**：默认允许 1 次重试（只读操作无副作用）
 
 #### 可观察性指标
 - `return_metrics=True`：在返回值中包含耗时、Prompt 长度等指标

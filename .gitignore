@@ -38,6 +38,11 @@ Thumbs.db
 # Project specific
 docs/
 reference/
+AgentLogs/
+
+# Reference repositories (not part of this project)
+myclaude/
+oh-my-opencode/
 
 # Secrets
 config.toml

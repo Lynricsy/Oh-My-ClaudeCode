@@ -14,6 +14,8 @@ from pydantic import Field
 from ccg_mcp.tools.coder import coder_tool
 from ccg_mcp.tools.codex import codex_tool
 from ccg_mcp.tools.gemini import gemini_tool
+from ccg_mcp.tools.librarian import librarian_tool
+from ccg_mcp.tools.looker import looker_tool
 
 # 创建 MCP 服务器实例
 mcp = FastMCP("CCG-MCP Server")
@@ -238,6 +240,153 @@ async def gemini(
         return_all_messages=return_all_messages,
         return_metrics=return_metrics,
         model=model,
+        timeout=timeout,
+        max_duration=max_duration,
+        max_retries=max_retries,
+        log_metrics=log_metrics,
+    )
+
+
+@mcp.tool(
+    name="librarian",
+    description="""
+    调用 Librarian 进行本地代码库搜索和理解。
+
+    **角色定位**：本地代码库搜索专家
+    - 🔍 代码定位：快速找到函数、类、模块的位置
+    - 📖 代码解释：解释代码的功能和设计模式
+    - 🔗 依赖分析：理解模块之间的依赖关系
+    - 📋 模式发现：查找代码库中的使用模式
+
+    **请求分类**：
+    | 类型 | 触发词 | 示例 |
+    |------|--------|------|
+    | TYPE A | "如何使用...", "最佳实践..." | 概念问题 |
+    | TYPE B | "X 在哪实现", "源码位置" | 实现查找 |
+    | TYPE C | "为什么报错...", "怎么解决..." | 问题诊断 |
+    | TYPE D | 复杂/模糊请求 | 综合研究 |
+
+    **使用场景**：
+    - "找到用户认证的代码"
+    - "这个函数是如何工作的"
+    - "所有使用 Redis 的地方"
+    - "为什么这个测试失败"
+
+    **特点**：
+    - 使用 gemini-3-flash 模型（快速、低成本）
+    - 默认只读模式，不会修改代码
+    - 输出结构化结果（files + answer + next_steps）
+
+    **注意**：
+    - Librarian 仅搜索本地代码库，不执行网络搜索
+    - 如需网络搜索/文档查询，请直接使用 exa/firecrawl/context7 MCP
+    - 默认 sandbox 为 read-only
+
+    **Prompt 模板**：
+    ```
+    请帮我在代码库中搜索：
+    **搜索目标**：[要查找的代码/功能]
+    **搜索范围**：[特定目录或文件类型，可选]
+    **期望输出**：[文件路径/代码解释]
+    ```
+    """,
+)
+async def librarian(
+    PROMPT: Annotated[str, "搜索或理解任务描述"],
+    cd: Annotated[Path, "工作目录（代码库根目录）"],
+    sandbox: Annotated[
+        Literal["read-only", "workspace-write", "danger-full-access"],
+        Field(description="沙箱策略，Librarian 默认只读"),
+    ] = "read-only",
+    SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
+    return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
+    return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
+    timeout: Annotated[int, "空闲超时（秒），默认 120 秒（Librarian 追求快速响应）"] = 120,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 600 秒（10 分钟）"] = 600,
+    max_retries: Annotated[int, "最大重试次数，默认 1（只读可安全重试）"] = 1,
+    log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
+) -> Dict[str, Any]:
+    """执行 Librarian 代码搜索任务"""
+    return await librarian_tool(
+        PROMPT=PROMPT,
+        cd=cd,
+        sandbox=sandbox,
+        SESSION_ID=SESSION_ID,
+        return_all_messages=return_all_messages,
+        return_metrics=return_metrics,
+        timeout=timeout,
+        max_duration=max_duration,
+        max_retries=max_retries,
+        log_metrics=log_metrics,
+    )
+
+
+@mcp.tool(
+    name="looker",
+    description="""
+    调用 Looker 进行多模态文件分析。
+
+    **角色定位**：多模态分析专家
+    - 📄 PDF 分析：提取文本、表格、结构
+    - 🖼️ 图片分析：描述内容、识别 UI 元素
+    - 📊 图表分析：解释数据趋势和关系
+    - 🏗️ 架构图分析：解释组件关系和数据流
+    - 📸 截图分析：识别错误信息、UI 状态
+
+    **使用场景**：
+    - 需要分析 PDF 文档内容
+    - 描述 UI 截图中的元素
+    - 解释架构图或流程图
+    - 从图表中提取数据
+
+    **适合使用**：
+    - 媒体文件无法作为纯文本读取
+    - 需要从文档中提取特定信息或摘要
+    - 需要描述图片或图表中的视觉内容
+
+    **不适合使用**：
+    - 源代码或纯文本文件（使用 Read 工具）
+    - 需要后续编辑的文件（需要从 Read 获取字面内容）
+
+    **特点**：
+    - 使用 gemini-3-flash 模型（擅长多模态分析）
+    - 默认只读模式，不会修改文件
+    - 节省主代理上下文 token
+
+    **注意**：Looker 仅分析文件，严禁修改，默认 sandbox 为 read-only
+
+    **Prompt 模板**：
+    ```
+    file_path: "/path/to/file.pdf"
+    goal: "提取文档中关于用户认证的所有内容"
+    ```
+    """,
+)
+async def looker(
+    file_path: Annotated[str, "要分析的媒体文件路径（PDF/图片/图表等）"],
+    goal: Annotated[str, "分析目标，描述需要从文件中提取什么信息"],
+    cd: Annotated[Path, "工作目录"],
+    sandbox: Annotated[
+        Literal["read-only", "workspace-write", "danger-full-access"],
+        Field(description="沙箱策略，Looker 默认只读"),
+    ] = "read-only",
+    SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
+    return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
+    return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
+    timeout: Annotated[int, "空闲超时（秒），默认 120 秒"] = 120,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 300 秒（5 分钟）"] = 300,
+    max_retries: Annotated[int, "最大重试次数，默认 1（只读可安全重试）"] = 1,
+    log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
+) -> Dict[str, Any]:
+    """执行 Looker 多模态分析任务"""
+    return await looker_tool(
+        file_path=file_path,
+        goal=goal,
+        cd=cd,
+        sandbox=sandbox,
+        SESSION_ID=SESSION_ID,
+        return_all_messages=return_all_messages,
+        return_metrics=return_metrics,
         timeout=timeout,
         max_duration=max_duration,
         max_retries=max_retries,
