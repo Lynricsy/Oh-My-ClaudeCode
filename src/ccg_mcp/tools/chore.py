@@ -1,7 +1,7 @@
 """Chore 工具实现
 
 执行简单、重复、杂务性质的任务。
-基于可配置后端（与 Coder 相同），使用廉价模型节省 token。
+基于 OpenCode CLI，使用廉价模型节省 token。
 
 主要功能：
 - 文件批量重命名
@@ -28,8 +28,6 @@ from pathlib import Path
 from typing import Annotated, Any, Dict, Generator, Iterator, Literal, Optional
 
 from pydantic import Field
-
-from ccg_mcp.config import build_coder_env
 
 
 # ============================================================================
@@ -216,22 +214,16 @@ def safe_chore_command(
     max_duration: int = 600,  # 最大 10 分钟
     prompt: str = "",
     cwd: Optional[Path] = None,
-    env: Optional[Dict[str, str]] = None,
 ) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
-    """安全执行 Chore 命令的上下文管理器"""
-    claude_path = shutil.which('claude')
-    if not claude_path:
+    """安全执行 Chore 命令的上下文管理器（使用 OpenCode CLI）"""
+    opencode_path = shutil.which('opencode')
+    if not opencode_path:
         raise CommandNotFoundError(
-            "未找到 claude CLI。请确保已安装 Claude Code CLI 并添加到 PATH。\n"
-            "安装指南：https://docs.anthropic.com/en/docs/claude-code"
+            "未找到 opencode CLI。请确保已安装 OpenCode CLI 并添加到 PATH。\n"
+            "安装指南：https://opencode.ai/docs/cli/"
         )
     popen_cmd = cmd.copy()
-    popen_cmd[0] = claude_path
-
-    # 合并环境变量
-    process_env = os.environ.copy()
-    if env:
-        process_env.update(env)
+    popen_cmd[0] = opencode_path
 
     process = subprocess.Popen(
         popen_cmd,
@@ -243,7 +235,6 @@ def safe_chore_command(
         encoding='utf-8',
         errors='replace',
         cwd=str(cwd) if cwd else None,
-        env=process_env,
     )
 
     thread: Optional[threading.Thread] = None
@@ -474,7 +465,7 @@ async def chore_tool(
 ) -> Dict[str, Any]:
     """执行 Chore 杂务任务
 
-    调用可配置后端（与 Coder 相同）执行简单、重复的杂务任务。
+    调用 OpenCode CLI 执行简单、重复的杂务任务。
 
     **角色定位**：杂务执行者
     - 🔧 简单任务（不需要复杂设计）
@@ -507,42 +498,16 @@ async def chore_tool(
     # 初始化指标收集器
     metrics = MetricsCollector(tool="chore", prompt=full_prompt, sandbox=sandbox)
 
-    # 获取配置的环境变量（与 Coder 共享配置）
-    try:
-        custom_env = build_coder_env()
-    except ValueError as e:
-        metrics.finish(
-            success=False,
-            error_kind=ErrorKind.CONFIG_ERROR,
-        )
-        if log_metrics:
-            metrics.log_to_stderr()
-
-        return {
-            "success": False,
-            "tool": "chore",
-            "error": str(e),
-            "error_kind": ErrorKind.CONFIG_ERROR,
-            "error_detail": _build_error_detail(str(e)),
-        }
-
-    # 构建命令
-    cmd = ["claude"]
-    cmd.extend(["--output-format", "stream-json"])
-    cmd.extend(["--setting-sources", "project"])
-
-    # 沙箱策略
-    if sandbox == "read-only":
-        cmd.append("--sandbox")
-    else:
-        cmd.append("--yolo")
-
+    # 构建 opencode run 命令
+    cmd = ["opencode", "run"]
+    cmd.extend(["--format", "json"])  # JSON 格式输出
+    
     # 会话恢复
     if SESSION_ID:
-        cmd.extend(["--resume", SESSION_ID])
-
-    # 添加 System Prompt
-    cmd.extend(["--append-system-prompt", CHORE_SYSTEM_PROMPT])
+        cmd.extend(["--session", SESSION_ID])
+    
+    # 添加 prompt（包含 System Prompt）
+    cmd.append(full_prompt)
 
     # 执行循环
     retries = 0
@@ -562,7 +527,7 @@ async def chore_tool(
         last_lines: list[str] = []
 
         try:
-            with safe_chore_command(cmd, timeout=timeout, max_duration=max_duration, prompt=PROMPT, cwd=cd, env=custom_env) as gen:
+            with safe_chore_command(cmd, timeout=timeout, max_duration=max_duration, prompt="", cwd=cd) as gen:
                 try:
                     for line in gen:
                         last_lines.append(line)
