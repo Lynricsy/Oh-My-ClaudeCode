@@ -41,12 +41,108 @@
 | 📚 **代码搜索** | `librarian` | Gemini CLI | 代码库搜索与理解 |
 | 👁️ **多模态分析** | `looker` | Gemini CLI | PDF、图片、图表分析 |
 
+### 系统架构
+
+```mermaid
+graph TB
+    subgraph "🎯 用户层"
+        User[👤 用户]
+    end
+
+    subgraph "🧠 决策层"
+        Claude[👑 Claude Opus<br/>架构师 / 协调者]
+    end
+
+    subgraph "⚡ 执行层"
+        subgraph "代码执行"
+            Coder[🔨 Coder<br/>Claude CLI + 可配置后端]
+            Chore[🔧 Chore<br/>OpenCode CLI]
+        end
+        subgraph "专家咨询"
+            Gemini[🧠 Gemini<br/>架构设计 / 第二意见]
+            Frontend[🎨 Frontend<br/>UI/UX 专家]
+        end
+        subgraph "信息获取"
+            Librarian[📚 Librarian<br/>代码搜索]
+            Looker[👁️ Looker<br/>多模态分析]
+        end
+    end
+
+    subgraph "⚖️ 审核层"
+        Codex[⚖️ Codex<br/>OpenAI 独立审核]
+    end
+
+    User -->|需求| Claude
+    Claude -->|任务分发| Coder
+    Claude -->|杂务任务| Chore
+    Claude -->|技术咨询| Gemini
+    Claude -->|前端任务| Frontend
+    Claude -->|代码搜索| Librarian
+    Claude -->|文件分析| Looker
+    Coder -->|执行结果| Claude
+    Chore -->|执行结果| Claude
+    Gemini -->|专家意见| Claude
+    Frontend -->|前端方案| Claude
+    Librarian -->|搜索结果| Claude
+    Looker -->|分析报告| Claude
+    Claude -->|代码审核| Codex
+    Codex -->|审核意见| Claude
+    Claude -->|最终结果| User
+
+    style Claude fill:#f9f,stroke:#333,stroke-width:3px
+    style Codex fill:#ff9,stroke:#333,stroke-width:2px
+    style User fill:#9ff,stroke:#333,stroke-width:2px
+```
+
 ### 协作流程
 
-```
-用户需求 → Claude 分析拆解 → Coder 执行 → Claude 验收 → Codex 审核 → 完成/迭代
-                                   ↑                           |
-                                   └───── 需修改时返回 ─────────┘
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as 👤 用户
+    participant C as 👑 Claude
+    participant Co as 🔨 Coder
+    participant Cx as ⚖️ Codex
+    participant G as 🧠 Gemini
+
+    U->>C: 提交需求
+
+    rect rgb(240, 248, 255)
+        Note over C: 📋 需求分析阶段
+        C->>C: 分析需求复杂度
+        opt 需要架构咨询
+            C->>G: 请求架构建议
+            G-->>C: 返回设计方案
+        end
+        C->>C: 拆解为子任务
+    end
+
+    rect rgb(255, 248, 240)
+        Note over C,Co: ⚡ 执行阶段
+        loop 每个子任务
+            C->>Co: 分发任务 + SESSION_ID
+            Co-->>C: 返回执行结果
+            C->>C: 验收结果
+            alt 需要修改
+                C->>Co: 反馈修改意见 (复用 SESSION_ID)
+                Co-->>C: 返回修改结果
+            end
+        end
+    end
+
+    rect rgb(255, 255, 240)
+        Note over C,Cx: ⚖️ 审核阶段
+        C->>Cx: 提交代码审核
+        Cx-->>C: 返回审核意见
+        alt 审核不通过
+            C->>Co: 根据审核意见修改
+            Co-->>C: 返回修改结果
+            C->>Cx: 再次审核
+            Cx-->>C: 审核通过
+        end
+    end
+
+    C->>U: 返回最终结果
 ```
 
 ## 🚀 快速开始
@@ -259,6 +355,7 @@ claude mcp remove omcc -s user
 api_token = "your-api-token"  # 必填
 base_url = "https://open.bigmodel.cn/api/anthropic"  # 示例：GLM API
 model = "glm-4.7"  # 默认模型
+extended_context = false  # 是否启用 1m 扩展上下文（通过 [1m] 后缀）
 
 [coder.env]
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
@@ -280,6 +377,17 @@ model = "gemini-3-flash"
 [chore]
 model = "anthropic/claude-sonnet-4-20250514"
 ```
+
+### Coder 配置项
+
+| 配置项 | 类型 | 必填 | 默认值 | 说明 |
+|--------|------|:----:|--------|------|
+| `api_token` | string | ✅ | - | API Token |
+| `base_url` | string | ✅ | - | API 地址（需支持 Claude Code API 协议） |
+| `model` | string | | `glm-4.7` | 模型名称 |
+| `extended_context` | bool | | `false` | 启用 1m 扩展上下文（自动添加 `[1m]` 后缀） |
+
+> **💡 1m 扩展上下文**: 启用后模型名称会自动添加 `[1m]` 后缀（如 `glm-4.7[1m]`），以启用 Claude Code 的 1 百万 token 上下文窗口。需要后端模型支持此特性。
 
 ### 环境变量（仅 Coder）
 
