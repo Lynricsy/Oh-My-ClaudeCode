@@ -18,7 +18,7 @@
 
 | MCP 工具 | 前置 Skill | 说明 |
 |----------|-----------|------|
-| `mcp__omcc__coder` | `/omcc-workflow` | 代码执行 |
+| `mcp__omcc__coder` | `/omcc-workflow` | 代码实现 |
 | `mcp__omcc__codex` | `/omcc-workflow` | 代码审核 |
 | `mcp__omcc__gemini` | `/gemini-collaboration` | 高阶顾问 |
 | `mcp__omcc__frontend` | `/frontend` | 前端/UI 开发 |
@@ -48,7 +48,7 @@
 
 | 角色 | 定位 | 用途 | sandbox | 重试 |
 |------|------|------|---------|------|
-| **Coder** | 代码执行者 | 生成/修改代码、批量任务 | workspace-write | 默认不重试 |
+| **Coder** | 代码实现者 | 生成/修改代码、批量任务 | workspace-write | 默认不重试 |
 | **Codex** | 代码审核者 | 代码 Review、质量把关、给出明确结论 | read-only | 默认 1 次 |
 | **Gemini** | 高阶顾问 | 架构设计、第二意见、复杂方案讨论 | workspace-write (yolo) | 默认 1 次 |
 
