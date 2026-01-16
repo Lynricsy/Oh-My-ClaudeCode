@@ -116,7 +116,7 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供全方位研究能力：
 | 代码审查 | Codex |
 | 架构设计/第二意见 | Gemini |
 
-Frontend 可集成 [UI/UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 技能，提供 57 种 UI 风格、95 种调色板、56 种字体搭配。
+> 💡 **Frontend 详细指南**：执行 `/frontend` 技能获取完整的前端开发指南。
 
 **会话复用**：保存 `SESSION_ID` 保持上下文。
 

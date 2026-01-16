@@ -323,24 +323,22 @@ if ($DryRun) {
 Write-Step "Step 4: Installing Skills..."
 
 $skillsDir = "$env:USERPROFILE\.claude\skills"
-$omccWorkflowSource = Join-Path $PSScriptRoot "skills\omcc-workflow"
-$geminiCollabSource = Join-Path $PSScriptRoot "skills\gemini-collaboration"
+
+# List of all skills to install
+$skills = @("omcc-workflow", "gemini-collaboration", "frontend", "chore", "librarian", "looker")
 
 if ($DryRun) {
     if (!(Test-Path $skillsDir)) {
         Write-DryRun "Would create directory: $skillsDir"
     }
-    if (Test-Path $omccWorkflowSource) {
-        Write-DryRun "Would copy: $omccWorkflowSource -> $skillsDir\omcc-workflow"
-        Write-Success "omcc-workflow skill would be installed"
-    } else {
-        Write-WarningMsg "omcc-workflow skill not found, would skip"
-    }
-    if (Test-Path $geminiCollabSource) {
-        Write-DryRun "Would copy: $geminiCollabSource -> $skillsDir\gemini-collaboration"
-        Write-Success "gemini-collaboration skill would be installed"
-    } else {
-        Write-WarningMsg "gemini-collaboration skill not found, would skip"
+    foreach ($skill in $skills) {
+        $source = Join-Path $PSScriptRoot "skills\$skill"
+        if (Test-Path $source) {
+            Write-DryRun "Would copy: $source -> $skillsDir\$skill"
+            Write-Success "$skill skill would be installed"
+        } else {
+            Write-WarningMsg "$skill skill not found, would skip"
+        }
     }
 } else {
     try {
@@ -350,28 +348,19 @@ if ($DryRun) {
             Write-Success "Created skills directory: $skillsDir"
         }
 
-        # Copy omcc-workflow skill
-        if (Test-Path $omccWorkflowSource) {
-            $dest = "$skillsDir\omcc-workflow"
-            if (Test-Path $dest) {
-                Remove-Item -Recurse -Force $dest
+        # Install each skill
+        foreach ($skill in $skills) {
+            $source = Join-Path $PSScriptRoot "skills\$skill"
+            if (Test-Path $source) {
+                $dest = "$skillsDir\$skill"
+                if (Test-Path $dest) {
+                    Remove-Item -Recurse -Force $dest
+                }
+                Copy-Item -Recurse $source $dest
+                Write-Success "Installed $skill skill"
+            } else {
+                Write-WarningMsg "$skill skill not found, skipping"
             }
-            Copy-Item -Recurse $omccWorkflowSource $dest
-            Write-Success "Installed omcc-workflow skill"
-        } else {
-            Write-WarningMsg "omcc-workflow skill not found, skipping"
-        }
-
-        # Copy gemini-collaboration skill
-        if (Test-Path $geminiCollabSource) {
-            $dest = "$skillsDir\gemini-collaboration"
-            if (Test-Path $dest) {
-                Remove-Item -Recurse -Force $dest
-            }
-            Copy-Item -Recurse $geminiCollabSource $dest
-            Write-Success "Installed gemini-collaboration skill"
-        } else {
-            Write-WarningMsg "gemini-collaboration skill not found, skipping"
         }
     } catch {
         Write-ErrorMsg "Failed to install skills"
@@ -446,9 +435,121 @@ if ($DryRun) {
 }
 
 # ==============================================================================
-# Step 6: Configure Coder
+# Step 6: Configure Gemini CLI (for Frontend/Librarian/Looker)
 # ==============================================================================
-Write-Step "Step 6: Configuring Coder..."
+Write-Step "Step 6: Configuring Gemini CLI..."
+
+$geminiDir = "$env:USERPROFILE\.gemini"
+$geminiSettingsSource = Join-Path $PSScriptRoot "templates\gemini\settings.json"
+$geminiSettingsPath = "$geminiDir\settings.json"
+
+if ($DryRun) {
+    # Check if gemini CLI is available
+    try {
+        $null = Get-Command gemini -ErrorAction Stop
+        Write-Success "gemini CLI is installed"
+
+        if (!(Test-Path $geminiDir)) {
+            Write-DryRun "Would create directory: $geminiDir"
+        }
+        if (Test-Path $geminiSettingsSource) {
+            if (Test-Path $geminiSettingsPath) {
+                Write-WarningMsg "Gemini settings.json already exists, would skip"
+            } else {
+                Write-DryRun "Would copy: $geminiSettingsSource -> $geminiSettingsPath"
+                Write-Success "Gemini settings.json would be installed"
+            }
+        }
+
+        try {
+            $null = Get-Command npm -ErrorAction Stop
+            Write-DryRun "Would install uipro-cli: npm install -g uipro-cli"
+            Write-DryRun "Would initialize UI/UX Pro Max: uipro init --ai gemini"
+        } catch {
+            Write-WarningMsg "npm not found, would skip UI/UX Pro Max installation"
+        }
+    } catch {
+        Write-WarningMsg "gemini CLI not installed, would skip Gemini configuration"
+    }
+} else {
+    # Check if gemini CLI is available
+    $geminiInstalled = $false
+    try {
+        $null = Get-Command gemini -ErrorAction Stop
+        $geminiInstalled = $true
+        Write-Success "gemini CLI is installed"
+    } catch {
+        Write-WarningMsg "gemini CLI not installed, skipping Gemini configuration"
+        Write-WarningMsg "Frontend/Librarian/Looker agents require Gemini CLI"
+        Write-WarningMsg "Install: https://github.com/google-gemini/gemini-cli"
+    }
+
+    if ($geminiInstalled) {
+        try {
+            # Create .gemini directory if it doesn't exist
+            if (!(Test-Path $geminiDir)) {
+                New-Item -ItemType Directory -Path $geminiDir -Force | Out-Null
+            }
+
+            # Copy settings.json if source exists
+            if (Test-Path $geminiSettingsSource) {
+                if (Test-Path $geminiSettingsPath) {
+                    Write-WarningMsg "Gemini settings.json already exists, skipping"
+                    Write-WarningMsg "To update, manually merge: $geminiSettingsSource"
+                } else {
+                    Copy-Item $geminiSettingsSource $geminiSettingsPath
+                    Write-Success "Installed Gemini settings.json"
+                }
+            }
+
+            # Try to install UI/UX Pro Max skill (optional, requires npm)
+            $npmInstalled = $false
+            try {
+                $null = Get-Command npm -ErrorAction Stop
+                $npmInstalled = $true
+            } catch {
+                Write-WarningMsg "npm not found, skipping UI/UX Pro Max skill installation"
+                Write-WarningMsg "To install manually: npm install -g uipro-cli && uipro init --ai gemini"
+            }
+
+            if ($npmInstalled) {
+                # Check if uipro is already installed
+                $uiproInstalled = $false
+                try {
+                    $null = Get-Command uipro -ErrorAction Stop
+                    $uiproInstalled = $true
+                    Write-Success "uipro-cli is already installed"
+                } catch {
+                    Write-WarningMsg "Installing UI/UX Pro Max skill for Frontend agent..."
+                    try {
+                        $null = npm install -g uipro-cli 2>&1
+                        $uiproInstalled = $true
+                        Write-Success "Installed uipro-cli"
+                    } catch {
+                        Write-WarningMsg "Failed to install uipro-cli (optional)"
+                    }
+                }
+
+                # Initialize uipro for gemini if installed
+                if ($uiproInstalled) {
+                    try {
+                        $null = uipro init --ai gemini 2>&1
+                        Write-Success "Initialized UI/UX Pro Max for Gemini"
+                    } catch {
+                        Write-WarningMsg "Failed to initialize uipro for Gemini (may already be initialized)"
+                    }
+                }
+            }
+        } catch {
+            Write-WarningMsg "Failed to configure Gemini CLI: $_"
+        }
+    }
+}
+
+# ==============================================================================
+# Step 7: Configure Coder
+# ==============================================================================
+Write-Step "Step 7: Configuring Coder..."
 
 $configDir = "$env:USERPROFILE\.omcc-mcp"
 $configPath = "$configDir\config.toml"

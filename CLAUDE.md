@@ -19,7 +19,7 @@
 
 ```
 Claude (Opus)     →  架构师 + 初审官 + 终审官 + 协调者
-Coder (可配置)    →  代码执行者（生成、修改、批量任务）
+Coder (可配置)    →  代码实现者（生成、修改、批量任务）
 Codex (OpenAI)    →  独立代码审核者（质量把关）
 Gemini (可选)     →  多面手专家（架构设计、第二意见）
 Frontend (Gemini 3 Pro) → 前端/UI 专家（界面设计、样式、动效）
@@ -62,8 +62,12 @@ Oh-My-ClaudeCode/
 │       ├── librarian.py      # Librarian 工具（深度研究）
 │       └── looker.py         # Looker 工具（多模态分析）
 ├── skills/                   # Skills 工作流指导
-│   ├── omcc-workflow/        # OMCC 协作流程
-│   └── gemini-collaboration/ # Gemini 协作指南
+│   ├── omcc-workflow/        # OMCC 协作流程（Coder/Codex）
+│   ├── gemini-collaboration/ # Gemini 协作指南
+│   ├── frontend/             # Frontend 前端/UI 指南
+│   ├── chore/                # Chore 杂务执行指南
+│   ├── librarian/            # Librarian 深度研究指南
+│   └── looker/               # Looker 多模态分析指南
 ├── templates/                # 模板文件
 │   └── omcc-global-prompt.md # 全局 CLAUDE.md 模板
 ├── cases/                    # 实测案例

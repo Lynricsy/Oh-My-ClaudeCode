@@ -156,8 +156,6 @@ fi
 write_step "Step 4: Installing Skills..."
 
 SKILLS_DIR="$HOME/.claude/skills"
-OMCC_WORKFLOW_SOURCE="$SCRIPT_DIR/skills/omcc-workflow"
-GEMINI_COLLAB_SOURCE="$SCRIPT_DIR/skills/gemini-collaboration"
 
 # Create skills directory if it doesn't exist
 if [ ! -d "$SKILLS_DIR" ]; then
@@ -165,25 +163,21 @@ if [ ! -d "$SKILLS_DIR" ]; then
     write_success "Created skills directory: $SKILLS_DIR"
 fi
 
-# Copy omcc-workflow skill
-if [ -d "$OMCC_WORKFLOW_SOURCE" ]; then
-    DEST="$SKILLS_DIR/omcc-workflow"
-    rm -rf "$DEST"
-    cp -r "$OMCC_WORKFLOW_SOURCE" "$DEST"
-    write_success "Installed omcc-workflow skill"
-else
-    write_warning "omcc-workflow skill not found, skipping"
-fi
+# List of all skills to install
+SKILLS=("omcc-workflow" "gemini-collaboration" "frontend" "chore" "librarian" "looker")
 
-# Copy gemini-collaboration skill
-if [ -d "$GEMINI_COLLAB_SOURCE" ]; then
-    DEST="$SKILLS_DIR/gemini-collaboration"
-    rm -rf "$DEST"
-    cp -r "$GEMINI_COLLAB_SOURCE" "$DEST"
-    write_success "Installed gemini-collaboration skill"
-else
-    write_warning "gemini-collaboration skill not found, skipping"
-fi
+# Install each skill
+for skill in "${SKILLS[@]}"; do
+    SOURCE="$SCRIPT_DIR/skills/$skill"
+    if [ -d "$SOURCE" ]; then
+        DEST="$SKILLS_DIR/$skill"
+        rm -rf "$DEST"
+        cp -r "$SOURCE" "$DEST"
+        write_success "Installed $skill skill"
+    else
+        write_warning "$skill skill not found, skipping"
+    fi
+done
 
 # ==============================================================================
 # Step 5: Configure global CLAUDE.md
@@ -224,9 +218,76 @@ else
 fi
 
 # ==============================================================================
-# Step 6: Configure Coder
+# Step 6: Configure Gemini CLI (for Frontend/Librarian/Looker)
 # ==============================================================================
-write_step "Step 6: Configuring Coder..."
+write_step "Step 6: Configuring Gemini CLI..."
+
+GEMINI_DIR="$HOME/.gemini"
+GEMINI_SETTINGS_SOURCE="$SCRIPT_DIR/templates/gemini/settings.json"
+GEMINI_SETTINGS_PATH="$GEMINI_DIR/settings.json"
+
+# Check if gemini CLI is installed
+if command -v gemini &> /dev/null; then
+    write_success "gemini CLI is installed"
+
+    # Create .gemini directory if it doesn't exist
+    mkdir -p "$GEMINI_DIR"
+
+    # Copy settings.json if source exists
+    if [ -f "$GEMINI_SETTINGS_SOURCE" ]; then
+        if [ -f "$GEMINI_SETTINGS_PATH" ]; then
+            write_warning "Gemini settings.json already exists, skipping"
+            write_warning "To update, manually merge: $GEMINI_SETTINGS_SOURCE"
+        else
+            cp "$GEMINI_SETTINGS_SOURCE" "$GEMINI_SETTINGS_PATH"
+            write_success "Installed Gemini settings.json"
+        fi
+    fi
+
+    # Try to install UI/UX Pro Max skill (optional, requires npm)
+    if command -v npm &> /dev/null; then
+        # Check if uipro is already installed
+        if command -v uipro &> /dev/null; then
+            write_success "uipro-cli is already installed"
+        else
+            write_warning "Installing UI/UX Pro Max skill for Frontend agent..."
+            set +e
+            npm install -g uipro-cli 2>/dev/null
+            NPM_EXIT=$?
+            set -e
+            if [ $NPM_EXIT -eq 0 ]; then
+                write_success "Installed uipro-cli"
+            else
+                write_warning "Failed to install uipro-cli (optional)"
+            fi
+        fi
+
+        # Initialize uipro for gemini if installed
+        if command -v uipro &> /dev/null; then
+            set +e
+            uipro init --ai gemini 2>/dev/null
+            UIPRO_EXIT=$?
+            set -e
+            if [ $UIPRO_EXIT -eq 0 ]; then
+                write_success "Initialized UI/UX Pro Max for Gemini"
+            else
+                write_warning "Failed to initialize uipro for Gemini (may already be initialized)"
+            fi
+        fi
+    else
+        write_warning "npm not found, skipping UI/UX Pro Max skill installation"
+        write_warning "To install manually: npm install -g uipro-cli && uipro init --ai gemini"
+    fi
+else
+    write_warning "gemini CLI not installed, skipping Gemini configuration"
+    write_warning "Frontend/Librarian/Looker agents require Gemini CLI"
+    write_warning "Install: https://github.com/google-gemini/gemini-cli"
+fi
+
+# ==============================================================================
+# Step 7: Configure Coder
+# ==============================================================================
+write_step "Step 7: Configuring Coder..."
 
 CONFIG_DIR="$HOME/.omcc-mcp"
 CONFIG_PATH="$CONFIG_DIR/config.toml"

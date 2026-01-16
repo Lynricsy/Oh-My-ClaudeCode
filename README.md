@@ -414,10 +414,18 @@ model = "anthropic/claude-sonnet-4-20250514"
 mkdir -p ~/.claude/skills
 cp -r skills/omcc-workflow ~/.claude/skills/
 cp -r skills/gemini-collaboration ~/.claude/skills/
+cp -r skills/frontend ~/.claude/skills/
+cp -r skills/chore ~/.claude/skills/
+cp -r skills/librarian ~/.claude/skills/
+cp -r skills/looker ~/.claude/skills/
 
 # Windows (PowerShell)
 xcopy /E /I "skills\omcc-workflow" "$env:USERPROFILE\.claude\skills\omcc-workflow"
 xcopy /E /I "skills\gemini-collaboration" "$env:USERPROFILE\.claude\skills\gemini-collaboration"
+xcopy /E /I "skills\frontend" "$env:USERPROFILE\.claude\skills\frontend"
+xcopy /E /I "skills\chore" "$env:USERPROFILE\.claude\skills\chore"
+xcopy /E /I "skills\librarian" "$env:USERPROFILE\.claude\skills\librarian"
+xcopy /E /I "skills\looker" "$env:USERPROFILE\.claude\skills\looker"
 ```
 
 ### 权限配置（可选）
