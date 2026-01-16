@@ -655,8 +655,8 @@ async def codex_tool(
     ] = 300,
     max_duration: Annotated[
         int,
-        Field(description="总时长硬上限（秒），默认 1800 秒（30 分钟），0 表示无限制"),
-    ] = 1800,
+        Field(description="总时长硬上限（秒），默认 7200 秒（2 小时），0 表示无限制"),
+    ] = 7200,
     max_retries: Annotated[int, "最大重试次数，默认 1（Codex 只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:

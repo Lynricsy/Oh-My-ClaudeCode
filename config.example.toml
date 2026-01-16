@@ -19,6 +19,11 @@ base_url = "https://open.bigmodel.cn/api/anthropic"
 # 模型名称（可选，默认 glm-4.7）
 model = "glm-4.7"
 
+# 是否启用 1m 扩展上下文（可选，默认 false）
+# 启用后会在模型名称后添加 [1m] 后缀，如 glm-4.7[1m]
+# 注意：需要后端模型支持 1m 上下文窗口
+extended_context = false
+
 # 额外环境变量（建议保留）
 [coder.env]
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"

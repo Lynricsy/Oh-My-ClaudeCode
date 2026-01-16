@@ -35,6 +35,9 @@ DEFAULT_MODELS = {
     "chore": None,                    # Chore 使用 OpenCode 默认模型
 }
 
+# Coder 默认配置
+DEFAULT_CODER_EXTENDED_CONTEXT = False  # 默认不启用 1m 上下文
+
 
 def get_config_path() -> Path:
     """获取配置文件路径"""
@@ -116,6 +119,24 @@ def get_coder_config_or_none() -> dict[str, Any] | None:
         return None
 
 
+def get_coder_extended_context(config: dict[str, Any] | None = None) -> bool:
+    """获取 Coder 是否启用 1m 扩展上下文
+
+    Args:
+        config: 配置字典，如果为 None 则自动加载
+
+    Returns:
+        是否启用 1m 扩展上下文
+    """
+    if config is None:
+        config = get_config()
+
+    coder_config = config.get("coder", {})
+    if isinstance(coder_config, dict):
+        return coder_config.get("extended_context", DEFAULT_CODER_EXTENDED_CONTEXT)
+    return DEFAULT_CODER_EXTENDED_CONTEXT
+
+
 def get_config_example() -> str:
     """获取配置文件示例"""
     return '''# ~/.omcc-mcp/config.toml
@@ -128,6 +149,7 @@ def get_config_example() -> str:
 api_token = "your-api-token"  # 必填：API Token
 base_url = "https://open.bigmodel.cn/api/anthropic"  # API 地址
 model = "glm-4.7"  # 模型名称
+extended_context = false  # 是否启用 1m 扩展上下文（通过 [1m] 后缀）
 
 # 可选：额外环境变量
 [coder.env]
@@ -170,9 +192,14 @@ def build_coder_env(config: dict[str, Any]) -> dict[str, str]:
     """
     # 验证 Coder 配置
     validate_coder_config(config)
-    
+
     coder_config = config.get("coder", {})
     model = coder_config.get("model", DEFAULT_MODELS["coder"])
+
+    # 如果启用 1m 扩展上下文，添加 [1m] 后缀
+    extended_context = get_coder_extended_context(config)
+    if extended_context and not model.endswith("[1m]"):
+        model = f"{model}[1m]"
 
     env = os.environ.copy()
 

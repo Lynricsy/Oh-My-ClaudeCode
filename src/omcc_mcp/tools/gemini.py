@@ -643,8 +643,8 @@ async def gemini_tool(
     ] = 300,
     max_duration: Annotated[
         int,
-        Field(description="总时长硬上限（秒），默认 1800 秒（30 分钟），0 表示无限制"),
-    ] = 1800,
+        Field(description="总时长硬上限（秒），默认 3600 秒（1 小时），0 表示无限制"),
+    ] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
