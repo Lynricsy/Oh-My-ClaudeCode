@@ -549,13 +549,50 @@ if ($DryRun) {
             Write-Host ""
             Write-Host "  Configuring API keys for MCP servers..." -ForegroundColor Cyan
             Write-Host ""
-            Write-Host "The following MCP servers require API keys:"
-            Write-Host "  - github MCP: requires GITHUB_PERSONAL_ACCESS_TOKEN"
-            Write-Host "    Get it from: https://github.com/settings/tokens"
-            Write-Host "    Required scopes: repo, read:org, read:user"
+            Write-Host "============================================================" -ForegroundColor White
+            Write-Host "GitHub Personal Access Token (for github MCP)" -ForegroundColor Yellow
+            Write-Host "============================================================" -ForegroundColor White
             Write-Host ""
-            Write-Host "  - firecrawl MCP: requires FIRECRAWL_API_KEY"
-            Write-Host "    Get it from: https://www.firecrawl.dev/app/api-keys"
+            Write-Host "How to get your token:"
+            Write-Host "  1. Go to: https://github.com/settings/tokens"
+            Write-Host "  2. Click 'Generate new token' -> 'Generate new token (classic)'"
+            Write-Host "  3. Set a descriptive name (e.g., 'OMCC Gemini MCP')"
+            Write-Host "  4. Set expiration as needed (recommend: 90 days or No expiration)"
+            Write-Host "  5. Select the following scopes:"
+            Write-Host ""
+            Write-Host "     Required scopes:" -ForegroundColor Green
+            Write-Host "     [x] repo              - Full control of private repositories"
+            Write-Host "         [x] repo:status   - Access commit status"
+            Write-Host "         [x] repo_deployment - Access deployment status"
+            Write-Host "         [x] public_repo   - Access public repositories"
+            Write-Host "         [x] repo:invite   - Access repository invitations"
+            Write-Host "     [x] read:org          - Read org and team membership"
+            Write-Host "     [x] read:user         - Read user profile data"
+            Write-Host "     [x] user:email        - Access user email addresses"
+            Write-Host ""
+            Write-Host "     Optional scopes (for full functionality):" -ForegroundColor Yellow
+            Write-Host "     [x] gist              - Create and manage gists"
+            Write-Host "     [x] read:project      - Read projects"
+            Write-Host "     [x] read:discussion   - Read discussions"
+            Write-Host ""
+            Write-Host "  6. Click 'Generate token' and copy the token immediately"
+            Write-Host "     (You won't be able to see it again!)"
+            Write-Host ""
+            Write-Host "============================================================" -ForegroundColor White
+            Write-Host "Firecrawl API Key (for firecrawl MCP)" -ForegroundColor Yellow
+            Write-Host "============================================================" -ForegroundColor White
+            Write-Host ""
+            Write-Host "How to get your API key:"
+            Write-Host "  1. Go to: https://www.firecrawl.dev/"
+            Write-Host "  2. Sign up or log in to your account"
+            Write-Host "  3. Navigate to: https://www.firecrawl.dev/app/api-keys"
+            Write-Host "  4. Click 'Create API Key'"
+            Write-Host "  5. Copy the generated API key"
+            Write-Host ""
+            Write-Host "  Note: Firecrawl offers a free tier with limited requests."
+            Write-Host "        Check pricing at: https://www.firecrawl.dev/pricing"
+            Write-Host ""
+            Write-Host "============================================================" -ForegroundColor White
             Write-Host ""
 
             # Load existing env if present
