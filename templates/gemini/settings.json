@@ -1,22 +1,12 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "_comment": "Gemini CLI 配置模板 - 用于 Librarian 网络研究和前端/UI 开发",
-  "_setup_instructions": {
-    "_1_copy_file": "复制此文件到 ~/.gemini/settings.json",
-    "_2_install_uipro": "npm install -g uipro-cli && uipro init --ai gemini",
-    "_3_set_env_vars": "设置环境变量 GITHUB_PERSONAL_ACCESS_TOKEN 和 FIRECRAWL_API_KEY"
-  },
   "mcpServers": {
     "context7": {
-      "_description": "官方文档查询 - 快速获取库/框架的最新文档",
       "httpUrl": "https://mcp.context7.com/mcp"
     },
     "websearch": {
-      "_description": "Exa 网络搜索 - 获取最新的网络信息",
       "httpUrl": "https://mcp.exa.ai/mcp?tools=web_search_exa"
     },
     "github": {
-      "_description": "GitHub 搜索和操作 - 需要设置 GITHUB_PERSONAL_ACCESS_TOKEN",
       "command": "docker",
       "args": [
         "run",
@@ -31,7 +21,6 @@
       }
     },
     "firecrawl": {
-      "_description": "Firecrawl 网页抓取 - 需要设置 FIRECRAWL_API_KEY",
       "command": "npx",
       "args": ["-y", "firecrawl-mcp"],
       "env": {
