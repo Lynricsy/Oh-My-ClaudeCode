@@ -23,6 +23,7 @@ Coder (可配置)    →  代码执行者（生成、修改、批量任务）
 Codex (OpenAI)    →  独立代码审核者（质量把关）
 Gemini (可选)     →  多面手专家（架构设计、第二意见）
 Frontend (Gemini 3 Pro) → 前端/UI 专家（界面设计、样式、动效）
+Chore (可配置)    →  杂务执行者（简单重复任务、批量操作）
 Librarian (Gemini 3 Flash) → 深度研究专家（代码搜索 + 网络研究 + 文档查询）
 Looker (Gemini 3 Flash) → 多模态分析专家（PDF/图片/图表分析）
 ```
@@ -57,6 +58,7 @@ Coder-Codex-Gemini/
 │       ├── codex.py          # Codex 工具
 │       ├── gemini.py         # Gemini 工具
 │       ├── frontend.py       # Frontend 工具（前端/UI）
+│       ├── chore.py          # Chore 工具（杂务执行）
 │       ├── librarian.py      # Librarian 工具（深度研究）
 │       └── looker.py         # Looker 工具（多模态分析）
 ├── skills/                   # Skills 工作流指导
@@ -96,6 +98,7 @@ Coder-Codex-Gemini/
 | `codex` | 代码审核 | OpenAI Codex | read-only |
 | `gemini` | 专家咨询/执行 | gemini-3-pro | workspace-write |
 | `frontend` | 前端/UI 开发 | gemini-3-pro | workspace-write |
+| `chore` | 杂务执行（批量操作） | 可配置 | workspace-write |
 | `librarian` | 深度研究（代码+网络+文档） | gemini-3-flash | read-only |
 | `looker` | 多模态分析（PDF/图片） | gemini-3-flash | read-only |
 
@@ -122,6 +125,7 @@ Coder-Codex-Gemini/
 - **Coder**：默认不重试（有写入副作用），可通过 `max_retries` 显式启用
 - **Gemini**：默认允许 1 次重试
 - **Frontend**：默认允许 1 次重试
+- **Chore**：默认不重试（简单任务一次完成）
 - **Librarian**：默认允许 1 次重试（只读操作无副作用）
 - **Looker**：默认允许 1 次重试（只读操作无副作用）
 

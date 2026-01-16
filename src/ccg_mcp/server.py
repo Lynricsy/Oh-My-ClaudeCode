@@ -17,6 +17,7 @@ from ccg_mcp.tools.gemini import gemini_tool
 from ccg_mcp.tools.librarian import librarian_tool
 from ccg_mcp.tools.looker import looker_tool
 from ccg_mcp.tools.frontend import frontend_tool
+from ccg_mcp.tools.chore import chore_tool
 
 # 创建 MCP 服务器实例
 mcp = FastMCP("CCG-MCP Server")
@@ -458,6 +459,77 @@ async def frontend(
 ) -> Dict[str, Any]:
     """执行 Frontend UI/UX Engineer 任务"""
     return await frontend_tool(
+        PROMPT=PROMPT,
+        cd=cd,
+        sandbox=sandbox,
+        SESSION_ID=SESSION_ID,
+        return_all_messages=return_all_messages,
+        return_metrics=return_metrics,
+        timeout=timeout,
+        max_duration=max_duration,
+        max_retries=max_retries,
+        log_metrics=log_metrics,
+    )
+
+
+@mcp.tool(
+    name="chore",
+    description="""
+    调用 Chore 执行简单、重复、杂务性质的任务。
+
+    **角色定位**：杂务执行者
+    - 🔧 简单任务（不需要复杂设计）
+    - 🔄 重复操作（批量处理）
+    - 💰 节省 token（使用廉价模型）
+
+    **使用场景**：
+    - 文件批量重命名/移动
+    - 全局文本替换
+    - 代码格式化/lint 修复
+    - 依赖版本更新
+    - 配置文件批量修改
+    - 日志清理
+
+    **适合使用**：
+    - 简单、明确、不需要设计的任务
+    - 批量处理多个文件
+    - token 消耗大但逻辑简单的操作
+
+    **不适合使用**：
+    - 需要创意设计（使用 Frontend）
+    - 需要架构决策（使用 Codex/Gemini）
+    - 复杂代码实现（使用 Coder）
+
+    **特点**：
+    - 使用可配置后端（与 Coder 相同，廉价模型）
+    - 默认不重试（简单任务一次完成）
+    - 快速执行，120s 空闲超时
+
+    **Prompt 模板**：
+    ```
+    将所有 .js 文件重命名为 .ts
+    将代码中所有 'var' 替换为 'let'
+    更新 package.json 中所有依赖到最新版本
+    ```
+    """,
+)
+async def chore(
+    PROMPT: Annotated[str, "杂务任务描述"],
+    cd: Annotated[Path, "工作目录"],
+    sandbox: Annotated[
+        Literal["read-only", "workspace-write", "danger-full-access"],
+        Field(description="沙箱策略，Chore 默认 workspace-write"),
+    ] = "workspace-write",
+    SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
+    return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
+    return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
+    timeout: Annotated[int, "空闲超时（秒），默认 120 秒"] = 120,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 600 秒（10 分钟）"] = 600,
+    max_retries: Annotated[int, "最大重试次数，默认 0（杂务任务通常不重试）"] = 0,
+    log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
+) -> Dict[str, Any]:
+    """执行 Chore 杂务任务"""
+    return await chore_tool(
         PROMPT=PROMPT,
         cd=cd,
         sandbox=sandbox,
