@@ -706,6 +706,15 @@ uv run omcc-mcp
 - **Codex CLI**: [Documentation](https://developers.openai.com/codex/quickstart)
 - **Gemini CLI**: [GitHub](https://github.com/google-gemini/gemini-cli)
 
+## 🙏 致谢
+
+本项目的灵感来源：
+
+- **[Coder-Codex-Gemini](https://github.com/FredericMN/Coder-Codex-Gemini)** - 多代理协作的初始灵感
+- **[ampcode](https://ampcode.us/)** - 优秀的 Claude Code 增强实践
+
+感谢这些项目对 AI 协作领域的探索和贡献！🐱
+
 ## 📄 License
 
 MIT
