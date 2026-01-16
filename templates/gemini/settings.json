@@ -1,6 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "_comment": "Gemini CLI MCP 配置模板 - 用于 Librarian 代理的网络搜索能力",
+  "_comment": "Gemini CLI 配置模板 - 用于 Librarian 网络研究和前端/UI 开发",
+  "_setup_instructions": {
+    "_1_copy_file": "复制此文件到 ~/.gemini/settings.json",
+    "_2_install_uipro": "npm install -g uipro-cli && uipro init --ai gemini",
+    "_3_set_env_vars": "设置环境变量 GITHUB_PERSONAL_ACCESS_TOKEN 和 FIRECRAWL_API_KEY"
+  },
   "mcpServers": {
     "context7": {
       "_description": "官方文档查询 - 快速获取库/框架的最新文档",

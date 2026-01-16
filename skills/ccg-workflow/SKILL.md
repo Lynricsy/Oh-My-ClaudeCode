@@ -13,7 +13,8 @@ description: |
 - **Claude**：架构师 + 验收者 + 最终决策者 + 协调者
 - **Coder**：执行者（代码/文档改动）
 - **Codex**：审核者 + 高级代码顾问
-- **Gemini**：高阶顾问（按需） → 详见 `/gemini-collaboration`
+- **Gemini**：高阶顾问（架构设计、第二意见）→ 详见 `/gemini-collaboration`
+- **Frontend**：**前端/UI 专家**（界面设计、样式、动效）
 - **Librarian**：深度研究专家（代码搜索 + 网络研究 + 文档查询）
 - **Looker**：多模态分析专家（PDF/图片/图表分析）
 
@@ -68,6 +69,7 @@ Coder 执行完毕后，Claude 快速读取验收：
 | Coder | 执行改动 | workspace-write | 可配置 | 默认不重试 |
 | Codex | 代码审核 | read-only | OpenAI Codex | 默认 1 次 |
 | Gemini | 顾问/执行 | workspace-write (yolo) | gemini-3-pro | 默认 1 次 |
+| **Frontend** | **前端/UI** | workspace-write | gemini-3-pro | 默认 1 次 |
 | Librarian | 深度研究 | read-only | gemini-3-flash | 默认 1 次 |
 | Looker | 多模态分析 | read-only | gemini-3-flash | 默认 1 次 |
 
@@ -100,6 +102,21 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供全方位研究能力：
 | **截图** | 识别错误信息、UI 状态 |
 
 > 💡 **Gemini 详细指南**：如需了解 Gemini 的具体调用方式和触发场景，请执行 `/gemini-collaboration` 技能。
+
+### 前端/UI 任务路由
+
+**前端/UI 任务应使用 Frontend 代理！**
+
+| 任务类型 | 首选代理 |
+|----------|----------|
+| 界面布局/组件设计 | **Frontend** |
+| 样式/动效实现 | **Frontend** |
+| UI 审查/改进 | **Frontend** |
+| 代码实现（设计完成后） | Coder |
+| 代码审查 | Codex |
+| 架构设计/第二意见 | Gemini |
+
+Frontend 可集成 [UI/UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 技能，提供 57 种 UI 风格、95 种调色板、56 种字体搭配。
 
 **会话复用**：保存 `SESSION_ID` 保持上下文。
 

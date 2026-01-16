@@ -16,6 +16,7 @@ from ccg_mcp.tools.codex import codex_tool
 from ccg_mcp.tools.gemini import gemini_tool
 from ccg_mcp.tools.librarian import librarian_tool
 from ccg_mcp.tools.looker import looker_tool
+from ccg_mcp.tools.frontend import frontend_tool
 
 # 创建 MCP 服务器实例
 mcp = FastMCP("CCG-MCP Server")
@@ -382,6 +383,82 @@ async def looker(
     return await looker_tool(
         file_path=file_path,
         goal=goal,
+        cd=cd,
+        sandbox=sandbox,
+        SESSION_ID=SESSION_ID,
+        return_all_messages=return_all_messages,
+        return_metrics=return_metrics,
+        timeout=timeout,
+        max_duration=max_duration,
+        max_retries=max_retries,
+        log_metrics=log_metrics,
+    )
+
+
+@mcp.tool(
+    name="frontend",
+    description="""
+    调用 Frontend UI/UX Engineer 进行前端/UI 开发。
+
+    **角色定位**：前端/UI 专家（设计师型开发者）
+    - 🎨 界面设计和布局实现
+    - 💄 样式和动效开发
+    - 📱 响应式适配
+    - ✨ UI 审查和改进
+
+    **使用场景**：
+    - 新建页面或组件
+    - 样式优化和动效开发
+    - UI 审查和改进建议
+    - 设计稿转代码
+
+    **适合使用**：
+    - 任何前端/UI 开发任务
+    - 需要设计师视角的界面优化
+    - 响应式和动效实现
+
+    **不适合使用**：
+    - 非前端代码实现（使用 Coder）
+    - 代码审查（使用 Codex）
+    - 外部研究（使用 Librarian）
+
+    **特点**：
+    - 使用 gemini-3-pro 模型（强创意和代码能力）
+    - 设计师视角：关注间距、色彩、微交互
+    - 支持多技术栈：React/Vue/Svelte/HTML+Tailwind
+
+    **集成 UI/UX Pro Max**：
+    - 57 种 UI 风格
+    - 95 种调色板
+    - 56 种字体搭配
+
+    **Prompt 模板**：
+    ```
+    创建一个 [页面类型] 页面：
+    - 风格：[极简/玻璃拟态/便当盒/...]
+    - 技术栈：[React/Vue/HTML+Tailwind]
+    - 要求：[响应式/暗色模式/动效]
+    ```
+    """,
+)
+async def frontend(
+    PROMPT: Annotated[str, "前端/UI 任务描述和需求"],
+    cd: Annotated[Path, "工作目录"],
+    sandbox: Annotated[
+        Literal["read-only", "workspace-write", "danger-full-access"],
+        Field(description="沙箱策略，Frontend 默认 workspace-write"),
+    ] = "workspace-write",
+    SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
+    return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
+    return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
+    timeout: Annotated[int, "空闲超时（秒），默认 180 秒"] = 180,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 1200 秒（20 分钟）"] = 1200,
+    max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
+    log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
+) -> Dict[str, Any]:
+    """执行 Frontend UI/UX Engineer 任务"""
+    return await frontend_tool(
+        PROMPT=PROMPT,
         cd=cd,
         sandbox=sandbox,
         SESSION_ID=SESSION_ID,

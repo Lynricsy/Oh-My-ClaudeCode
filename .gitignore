@@ -43,6 +43,7 @@ AgentLogs/
 # Reference repositories (not part of this project)
 myclaude/
 oh-my-opencode/
+ui-ux-pro-max-skill/
 
 # Secrets
 config.toml
