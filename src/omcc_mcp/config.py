@@ -1,7 +1,7 @@
 """配置加载模块
 
 优先级：配置文件 > 环境变量
-配置文件路径：~/.ccg-mcp/config.toml
+配置文件路径：~/.omcc-mcp/config.toml
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ class ConfigError(Exception):
 
 def get_config_path() -> Path:
     """获取配置文件路径"""
-    return Path.home() / ".ccg-mcp" / "config.toml"
+    return Path.home() / ".omcc-mcp" / "config.toml"
 
 
 def load_config() -> dict[str, Any]:
@@ -55,7 +55,7 @@ def load_config() -> dict[str, Any]:
         }
 
     # 生成配置引导信息
-    config_example = '''# ~/.ccg-mcp/config.toml
+    config_example = '''# ~/.omcc-mcp/config.toml
 
 [coder]
 api_token = "your-api-token"  # 必填

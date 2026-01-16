@@ -1,6 +1,6 @@
-"""CCG-MCP 服务器主体
+"""OMCC-MCP 服务器主体
 
-提供 coder、codex 和 gemini 三个 MCP 工具，实现多方协作。
+Oh-My-ClaudeCode 多代理协作 MCP 服务器。
 """
 
 from __future__ import annotations
@@ -11,16 +11,16 @@ from typing import Annotated, Any, Dict, List, Literal, Optional
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
 
-from ccg_mcp.tools.coder import coder_tool
-from ccg_mcp.tools.codex import codex_tool
-from ccg_mcp.tools.gemini import gemini_tool
-from ccg_mcp.tools.librarian import librarian_tool
-from ccg_mcp.tools.looker import looker_tool
-from ccg_mcp.tools.frontend import frontend_tool
-from ccg_mcp.tools.chore import chore_tool
+from omcc_mcp.tools.coder import coder_tool
+from omcc_mcp.tools.codex import codex_tool
+from omcc_mcp.tools.gemini import gemini_tool
+from omcc_mcp.tools.librarian import librarian_tool
+from omcc_mcp.tools.looker import looker_tool
+from omcc_mcp.tools.frontend import frontend_tool
+from omcc_mcp.tools.chore import chore_tool
 
 # 创建 MCP 服务器实例
-mcp = FastMCP("CCG-MCP Server")
+mcp = FastMCP("OMCC-MCP Server")
 
 
 @mcp.tool(

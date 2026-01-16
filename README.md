@@ -55,9 +55,9 @@ OMCC 通过连接多个顶级模型，构建了一个高效、低成本且高质
 
 ### 📊 实测案例
 
-**[单元测试批量生成](cases/2025-01-05-unit-test-generation/README.md)** - CCG 架构实测记录
+**[单元测试批量生成](cases/2025-01-05-unit-test-generation/README.md)** - OMCC 架构实测记录
 
-| 指标 | 纯 Claude 方案 | CCG 协作方案 | 说明 |
+| 指标 | 纯 Claude 方案 | OMCC 协作方案 | 说明 |
 | :--- | :--- | :--- | :--- |
 | **任务规模** | 7,488 行代码（481 个测试用例） | 7,488 行代码（481 个测试用例） | 为某后端项目生成单元测试 |
 | **总成本** | $3.13 | $0.55 | **节省 82%** |
@@ -86,7 +86,7 @@ flowchart TB
     end
 
     subgraph MCPLayer ["MCP 服务器"]
-        MCP{{"⚙️ CCG-MCP"}}
+        MCP{{"⚙️ OMCC-MCP"}}
     end
 
     subgraph ToolLayer ["执行层"]
@@ -184,14 +184,14 @@ chmod +x setup.sh && ./setup.sh
 
 **🔐 安全说明**：
 - API Token 输入时不会显示在屏幕上
-- 配置文件保存在 `~/.ccg-mcp/config.toml`，权限设置为仅当前用户可读写
+- 配置文件保存在 `~/.omcc-mcp/config.toml`，权限设置为仅当前用户可读写
 - Token 仅存储在本地，不会上传或共享
 
 > 💡 **提示**：一键配置完成后，请重启 Claude Code CLI 使配置生效。
 
 ### Windows 用户注意事项
 
-在 Windows 上使用 CCG-MCP，请确保以下 CLI 工具已正确添加到系统 PATH：
+在 Windows 上使用 OMCC-MCP，请确保以下 CLI 工具已正确添加到系统 PATH：
 
 | 工具 | 验证命令 | 常见安装位置 |
 |------|----------|--------------|
@@ -224,7 +224,7 @@ uv --version
 一键脚本默认使用远程安装方式，无需额外操作。如需手动安装：
 
 ```bash
-claude mcp add ccg -s user --transport stdio -- uvx --refresh --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git ccg-mcp
+claude mcp add omcc -s user --transport stdio -- uvx --refresh --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git omcc-mcp
 ```
 
 #### 本地安装（仅开发调试）
@@ -240,10 +240,10 @@ uv sync
 
 # 注册 MCP 服务器（使用本地路径）
 # Windows
-claude mcp add ccg -s user --transport stdio -- uv run --directory $pwd ccg-mcp
+claude mcp add omcc -s user --transport stdio -- uv run --directory $pwd omcc-mcp
 
 # macOS/Linux
-claude mcp add ccg -s user --transport stdio -- uv run --directory $(pwd) ccg-mcp
+claude mcp add omcc -s user --transport stdio -- uv run --directory $(pwd) omcc-mcp
 ```
 
 #### 远程安装 vs 本地安装
@@ -260,7 +260,7 @@ claude mcp add ccg -s user --transport stdio -- uv run --directory $(pwd) ccg-mc
 
 **卸载 MCP 服务器**
 ```bash
-claude mcp remove ccg -s user
+claude mcp remove omcc -s user
 ```
 
 ### 3. 配置 Coder
@@ -272,13 +272,13 @@ claude mcp remove ccg -s user
 **创建配置目录**:
 ```bash
 # Windows
-mkdir %USERPROFILE%\.ccg-mcp
+mkdir %USERPROFILE%\.omcc-mcp
 
 # macOS/Linux
-mkdir -p ~/.ccg-mcp
+mkdir -p ~/.omcc-mcp
 ```
 
-**创建配置文件** `~/.ccg-mcp/config.toml`:
+**创建配置文件** `~/.omcc-mcp/config.toml`:
 ```toml
 [coder]
 api_token = "your-api-token"  # 必填
@@ -296,13 +296,13 @@ Skills 层提供工作流指导，确保 Claude 正确使用 MCP 工具。
 ```bash
 # Windows (PowerShell)
 if (!(Test-Path "$env:USERPROFILE\.claude\skills")) { mkdir "$env:USERPROFILE\.claude\skills" }
-xcopy /E /I "skills\ccg-workflow" "$env:USERPROFILE\.claude\skills\ccg-workflow"
+xcopy /E /I "skills\omcc-workflow" "$env:USERPROFILE\.claude\skills\omcc-workflow"
 # 可选：安装 Gemini 协作 Skill
 xcopy /E /I "skills\gemini-collaboration" "$env:USERPROFILE\.claude\skills\gemini-collaboration"
 
 # macOS/Linux
 mkdir -p ~/.claude/skills
-cp -r skills/ccg-workflow ~/.claude/skills/
+cp -r skills/omcc-workflow ~/.claude/skills/
 # 可选：安装 Gemini 协作 Skill
 cp -r skills/gemini-collaboration ~/.claude/skills/
 ```
@@ -325,17 +325,17 @@ cp -r skills/gemini-collaboration ~/.claude/skills/
 
 ## ⚠️ Skill 阅读前置条件（强制）
 
-**在调用任何 CCG MCP 工具之前，必须先执行对应的 Skill 获取最佳实践指导：**
+**在调用任何 OMCC MCP 工具之前，必须先执行对应的 Skill 获取最佳实践指导：**
 
 | MCP 工具 | 前置 Skill | 执行方式 |
 |----------|-----------|---------|
-| `mcp__ccg__coder` | `/ccg-workflow` | 必须先执行 |
-| `mcp__ccg__codex` | `/ccg-workflow` | 必须先执行 |
-| `mcp__ccg__gemini` | `/gemini-collaboration` | 必须先执行 |
+| `mcp__omcc__coder` | `/omcc-workflow` | 必须先执行 |
+| `mcp__omcc__codex` | `/omcc-workflow` | 必须先执行 |
+| `mcp__omcc__gemini` | `/gemini-collaboration` | 必须先执行 |
 
 **执行流程**：
 1. 用户请求使用 Coder/Codex/Gemini
-2. **立即执行对应 Skill**（如 `/ccg-workflow`、`/gemini-collaboration`）
+2. **立即执行对应 Skill**（如 `/omcc-workflow`、`/gemini-collaboration`）
 3. 阅读 Skill 返回的指导内容
 4. 按照指导调用 MCP 工具
 
@@ -395,7 +395,7 @@ claude mcp list
 
 ✅ 看到以下输出即表示安装成功：
 ```text
-ccg: ... - ✓ Connected
+omcc: ... - ✓ Connected
 ```
 
 ### 7. (可选) 权限配置
@@ -406,9 +406,9 @@ ccg: ... - ✓ Connected
 {
   "permissions": {
     "allow": [
-      "mcp__ccg__coder",
-      "mcp__ccg__codex",
-      "mcp__ccg__gemini"
+      "mcp__omcc__coder",
+      "mcp__omcc__codex",
+      "mcp__omcc__gemini"
     ]
   }
 }
@@ -695,7 +695,7 @@ cd Oh-My-ClaudeCode
 uv sync
 
 # 3. 本地调试运行
-uv run ccg-mcp
+uv run omcc-mcp
 ```
 
 ## 📚 参考资源

@@ -1,5 +1,5 @@
 
-# CCG Configuration
+# OMCC Configuration
 
 # 全局协议
 
@@ -14,17 +14,17 @@
 
 ## ⚠️ Skill 阅读前置条件（强制）
 
-**在调用任何 CCG MCP 工具之前，必须先执行对应的 Skill 获取最佳实践指导：**
+**在调用任何 OMCC MCP 工具之前，必须先执行对应的 Skill 获取最佳实践指导：**
 
 | MCP 工具 | 前置 Skill | 执行方式 |
 |----------|-----------|---------|
-| `mcp__ccg__coder` | `/ccg-workflow` | 必须先执行 |
-| `mcp__ccg__codex` | `/ccg-workflow` | 必须先执行 |
-| `mcp__ccg__gemini` | `/gemini-collaboration` | 必须先执行 |
+| `mcp__omcc__coder` | `/omcc-workflow` | 必须先执行 |
+| `mcp__omcc__codex` | `/omcc-workflow` | 必须先执行 |
+| `mcp__omcc__gemini` | `/gemini-collaboration` | 必须先执行 |
 
 **执行流程**：
 1. 用户请求使用 Coder/Codex/Gemini
-2. **立即执行对应 Skill**（如 `/ccg-workflow`、`/gemini-collaboration`）
+2. **立即执行对应 Skill**（如 `/omcc-workflow`、`/gemini-collaboration`）
 3. 阅读 Skill 返回的指导内容
 4. 按照指导调用 MCP 工具
 

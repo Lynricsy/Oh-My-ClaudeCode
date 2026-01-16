@@ -1,4 +1,4 @@
-# Coder-Codex-Gemini (CCG)
+# Coder-Codex-Gemini (OMCC)
 
 <div align="center">
 
@@ -23,7 +23,7 @@ Empower **Claude/Sisyphus** as the architect to orchestrate **Coder** for code e
 
 ## 🌟 Core Features
 
-CCG connects multiple top-tier models to build an efficient, cost-effective, and high-quality pipeline for code generation and review:
+OMCC connects multiple top-tier models to build an efficient, cost-effective, and high-quality pipeline for code generation and review:
 
 | Dimension | Value Proposition |
 | :--- | :--- |
@@ -62,9 +62,9 @@ In this system, each model has a clear responsibility:
 
 ### 📊 Case Study
 
-**[Unit Test Batch Generation](cases/2025-01-05-unit-test-generation/README.md)** - CCG Architecture Real-World Test
+**[Unit Test Batch Generation](cases/2025-01-05-unit-test-generation/README.md)** - OMCC Architecture Real-World Test
 
-| Metric | Pure Claude Approach | CCG Collaborative Approach | Notes |
+| Metric | Pure Claude Approach | OMCC Collaborative Approach | Notes |
 | :--- | :--- | :--- | :--- |
 | **Task Scale** | 7,488 lines of code (481 test cases) | 7,488 lines of code (481 test cases) | Unit test generation for a backend project |
 | **Total Cost** | $3.13 | $0.55 | **82% savings** |
@@ -93,7 +93,7 @@ flowchart TB
     end
 
     subgraph MCPLayer ["MCP Server"]
-        MCP{{"⚙️ CCG-MCP"}}
+        MCP{{"⚙️ OMCC-MCP"}}
     end
 
     subgraph ToolLayer ["Execution Layer"]
@@ -167,14 +167,14 @@ We provide one-click setup scripts that automate all configuration steps:
 
 **Windows (Double-click or run in terminal)**
 ```powershell
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
+git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
 cd Coder-Codex-Gemini
 .\setup.bat
 ```
 
 **macOS/Linux**
 ```bash
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
+git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
 cd Coder-Codex-Gemini
 chmod +x setup.sh && ./setup.sh
 ```
@@ -191,7 +191,7 @@ chmod +x setup.sh && ./setup.sh
 
 **🔐 Security Notes**:
 - API Token input is hidden (not displayed on screen)
-- Config file saved to `~/.ccg-mcp/config.toml` with user-only read/write permissions
+- Config file saved to `~/.omcc-mcp/config.toml` with user-only read/write permissions
 - Tokens are stored locally only, never uploaded or shared
 
 > 💡 **Tip**: After one-click setup completes, restart Claude Code CLI for changes to take effect.
@@ -203,7 +203,7 @@ chmod +x setup.sh && ./setup.sh
 One-click scripts use remote installation by default. For manual installation:
 
 ```bash
-claude mcp add ccg -s user --transport stdio -- uvx --refresh --from git+https://github.com/FredericMN/Coder-Codex-Gemini.git ccg-mcp
+claude mcp add omcc -s user --transport stdio -- uvx --refresh --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git omcc-mcp
 ```
 
 #### Local Installation (Development Only)
@@ -219,10 +219,10 @@ uv sync
 
 # Register MCP server (using local path)
 # Windows
-claude mcp add ccg -s user --transport stdio -- uv run --directory $pwd ccg-mcp
+claude mcp add omcc -s user --transport stdio -- uv run --directory $pwd omcc-mcp
 
 # macOS/Linux
-claude mcp add ccg -s user --transport stdio -- uv run --directory $(pwd) ccg-mcp
+claude mcp add omcc -s user --transport stdio -- uv run --directory $(pwd) omcc-mcp
 ```
 
 #### Remote vs Local Installation
@@ -239,7 +239,7 @@ claude mcp add ccg -s user --transport stdio -- uv run --directory $(pwd) ccg-mc
 
 **Uninstall MCP Server**
 ```bash
-claude mcp remove ccg -s user
+claude mcp remove omcc -s user
 ```
 
 ### 3. Configure Coder
@@ -251,13 +251,13 @@ It is recommended to use the **Configuration File** method for management.
 **Create Configuration Directory**:
 ```bash
 # Windows
-mkdir %USERPROFILE%\.ccg-mcp
+mkdir %USERPROFILE%\.omcc-mcp
 
 # macOS/Linux
-mkdir -p ~/.ccg-mcp
+mkdir -p ~/.omcc-mcp
 ```
 
-**Create Configuration File** `~/.ccg-mcp/config.toml`:
+**Create Configuration File** `~/.omcc-mcp/config.toml`:
 ```toml
 [coder]
 api_token = "your-api-token"  # Required
@@ -275,13 +275,13 @@ The Skills layer provides workflow guidance to ensure Claude uses MCP tools corr
 ```bash
 # Windows (PowerShell)
 if (!(Test-Path "$env:USERPROFILE\.claude\skills")) { mkdir "$env:USERPROFILE\.claude\skills" }
-xcopy /E /I "skills\ccg-workflow" "$env:USERPROFILE\.claude\skills\ccg-workflow"
+xcopy /E /I "skills\omcc-workflow" "$env:USERPROFILE\.claude\skills\omcc-workflow"
 # Optional: Install Gemini collaboration Skill
 xcopy /E /I "skills\gemini-collaboration" "$env:USERPROFILE\.claude\skills\gemini-collaboration"
 
 # macOS/Linux
 mkdir -p ~/.claude/skills
-cp -r skills/ccg-workflow ~/.claude/skills/
+cp -r skills/omcc-workflow ~/.claude/skills/
 # Optional: Install Gemini collaboration Skill
 cp -r skills/gemini-collaboration ~/.claude/skills/
 ```
@@ -304,17 +304,17 @@ Add mandatory rules to `~/.claude/CLAUDE.md` to ensure Claude follows the collab
 
 ## ⚠️ Skill Reading Prerequisite (Mandatory)
 
-**Before calling any CCG MCP tool, you must first execute the corresponding Skill to get best practice guidance:**
+**Before calling any OMCC MCP tool, you must first execute the corresponding Skill to get best practice guidance:**
 
 | MCP Tool | Prerequisite Skill | Action |
 |----------|-------------------|--------|
-| `mcp__ccg__coder` | `/ccg-workflow` | Must execute first |
-| `mcp__ccg__codex` | `/ccg-workflow` | Must execute first |
-| `mcp__ccg__gemini` | `/gemini-collaboration` | Must execute first |
+| `mcp__omcc__coder` | `/omcc-workflow` | Must execute first |
+| `mcp__omcc__codex` | `/omcc-workflow` | Must execute first |
+| `mcp__omcc__gemini` | `/gemini-collaboration` | Must execute first |
 
 **Execution Flow**:
 1. User requests to use Coder/Codex/Gemini
-2. **Immediately execute the corresponding Skill** (e.g., `/ccg-workflow`)
+2. **Immediately execute the corresponding Skill** (e.g., `/omcc-workflow`)
 3. Read the guidance content returned by the Skill
 4. Call MCP tool following the guidance
 
@@ -374,7 +374,7 @@ claude mcp list
 
 ✅ Seeing the following output means installation is successful:
 ```text
-ccg: ... - ✓ Connected
+omcc: ... - ✓ Connected
 ```
 
 ### 7. (Optional) Permission Configuration
@@ -385,9 +385,9 @@ For a smoother experience, add automatic authorization in `~/.claude/settings.js
 {
   "permissions": {
     "allow": [
-      "mcp__ccg__coder",
-      "mcp__ccg__codex",
-      "mcp__ccg__gemini"
+      "mcp__omcc__coder",
+      "mcp__omcc__codex",
+      "mcp__omcc__gemini"
     ]
   }
 }
@@ -603,14 +603,14 @@ This project uses a **MCP + Skills + Global Prompt** hybrid architecture in Clau
 
 **Windows (Double-click or run in terminal)**
 ```powershell
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
+git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
 cd Coder-Codex-Gemini
 .\setup-opencode.bat
 ```
 
 **macOS/Linux**
 ```bash
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
+git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
 cd Coder-Codex-Gemini
 chmod +x setup-opencode.sh && ./setup-opencode.sh
 ```
@@ -620,7 +620,7 @@ chmod +x setup-opencode.sh && ./setup-opencode.sh
 1. **Check & Install Dependencies** - bun, opencode CLI
 2. **Install Oh-My-OpenCode** - Interactive subscription selection
 3. **Configure opencode.json** - Model definitions and API config
-4. **Configure oh-my-opencode.json** - CCG agent role definitions
+4. **Configure oh-my-opencode.json** - OMCC agent role definitions
 5. **Configure AGENTS.md** - Collaboration protocol
 
 ### 📝 Manual Configuration (Recommended for Existing Users)
@@ -639,14 +639,14 @@ If you already have OpenCode and Oh-My-OpenCode installed, we recommend referenc
 
 The main items to configure are `prompt_append` and `model` for each agent:
 
-> 💡 **About `prompt_append`**: This is an "append prompt" that adds CCG collaboration rules on top of Oh-My-OpenCode's original prompts. It does not overwrite the original OMO prompts, ensuring maximum compatibility.
+> 💡 **About `prompt_append`**: This is an "append prompt" that adds OMCC collaboration rules on top of Oh-My-OpenCode's original prompts. It does not overwrite the original OMO prompts, ensuring maximum compatibility.
 
 ```json
 {
   "agents": {
     "Sisyphus": {
       "model": "anthropic/claude-opus-4-5-20251101",
-      "prompt_append": "## CCG Collaboration Rules\n\nYou are the architect..."
+      "prompt_append": "## OMCC Collaboration Rules\n\nYou are the architect..."
     },
     "document-writer": {
       "model": "zhipuai-coding-plan/glm-4.7",
@@ -664,7 +664,7 @@ The main items to configure are `prompt_append` and `model` for each agent:
 }
 ```
 
-- **`prompt_append`**: Defines the behavioral norms for each agent role, the core of CCG collaboration
+- **`prompt_append`**: Defines the behavioral norms for each agent role, the core of OMCC collaboration
 - **`model`**: Can be adjusted to models you have subscribed to
 
 **2. `opencode.json` - Model and API Configuration**
@@ -712,7 +712,7 @@ When using third-party API proxies, **the model name key must exactly match the 
 
 ### Agent Role Mapping (Template configuration, models can be freely changed)
 
-| CCG Role | OpenCode Agent | Model | Responsibility |
+| OMCC Role | OpenCode Agent | Model | Responsibility |
 |----------|----------------|-------|----------------|
 | **Architect** | Sisyphus | Claude Opus 4.5 | Requirement analysis, task decomposition, final decisions |
 | **Coder** | document-writer | GLM-4.7 | Code generation, document modification, batch tasks |
@@ -757,14 +757,14 @@ Issues and Pull Requests are welcome!
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
+git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
 cd Coder-Codex-Gemini
 
 # 2. Install dependencies (using uv)
 uv sync
 
 # 3. Local debug run
-uv run ccg-mcp
+uv run omcc-mcp
 ```
 
 ## 📚 References

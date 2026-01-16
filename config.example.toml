@@ -1,5 +1,5 @@
-# CCG-MCP 配置文件示例
-# 请复制此文件到 ~/.ccg-mcp/config.toml 并填入你的配置
+# OMCC-MCP 配置文件示例
+# 请复制此文件到 ~/.omcc-mcp/config.toml 并填入你的配置
 
 [coder]
 # Coder 工具可配置任意支持 Claude Code API 的模型后端

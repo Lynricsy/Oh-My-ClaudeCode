@@ -20,7 +20,7 @@ from typing import Annotated, Any, Dict, Generator, Iterator, Literal, Optional
 
 from pydantic import Field
 
-from ccg_mcp.config import build_coder_env, get_config
+from omcc_mcp.config import build_coder_env, get_config
 
 
 # ============================================================================

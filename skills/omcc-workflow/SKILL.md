@@ -1,12 +1,12 @@
 ---
-name: ccg-workflow
+name: omcc-workflow
 description: |
-  CCG (Coder-Codex-Gemini) collaboration for code and document tasks.
+  OMCC (Coder-Codex-Gemini) collaboration for code and document tasks.
   Use when: writing/modifying code, editing documents, implementing features, fixing bugs, refactoring, or code review.
   协调 Coder 执行代码/文档改动，Codex 审核代码质量。
 ---
 
-# CCG 协作流程
+# OMCC 协作流程
 
 ## 角色分工
 

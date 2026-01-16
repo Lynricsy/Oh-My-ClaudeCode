@@ -1,5 +1,5 @@
 #!/bin/bash
-# CCG One-Click Setup Script for macOS/Linux
+# OMCC One-Click Setup Script for macOS/Linux
 set -e
 
 # Color codes for output
@@ -76,8 +76,8 @@ fi
 # ==============================================================================
 write_step "Step 3: Registering MCP server..."
 
-# Try to remove existing ccg MCP server if it exists
-claude mcp remove ccg --scope user 2>/dev/null && write_warning "Removed existing ccg MCP server" || true
+# Try to remove existing omcc MCP server if it exists
+claude mcp remove omcc --scope user 2>/dev/null && write_warning "Removed existing omcc MCP server" || true
 
 # Check uv version to determine if --refresh is supported
 MCP_REGISTERED=false
@@ -99,7 +99,7 @@ fi
 if [ "$USE_REFRESH" = true ]; then
     # Try with --refresh first (disable set -e for this block)
     set +e
-    REFRESH_OUTPUT=$(claude mcp add ccg --scope user --transport stdio -- uvx --refresh --from git+https://github.com/FredericMN/Coder-Codex-Gemini.git ccg-mcp 2>&1)
+    REFRESH_OUTPUT=$(claude mcp add omcc --scope user --transport stdio -- uvx --refresh --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git omcc-mcp 2>&1)
     REFRESH_EXIT_CODE=$?
     set -e
 
@@ -110,7 +110,7 @@ if [ "$USE_REFRESH" = true ]; then
         # Fallback: --refresh was rejected (covers various CLI error message formats), try without it
         write_warning "--refresh option was rejected, falling back to installation without --refresh..."
         set +e
-        FALLBACK_OUTPUT=$(claude mcp add ccg --scope user --transport stdio -- uvx --from git+https://github.com/FredericMN/Coder-Codex-Gemini.git ccg-mcp 2>&1)
+        FALLBACK_OUTPUT=$(claude mcp add omcc --scope user --transport stdio -- uvx --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git omcc-mcp 2>&1)
         FALLBACK_EXIT_CODE=$?
         set -e
         if [ $FALLBACK_EXIT_CODE -eq 0 ]; then
@@ -133,7 +133,7 @@ else
     write_warning "Consider upgrading uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
 
     set +e
-    FALLBACK_OUTPUT=$(claude mcp add ccg --scope user --transport stdio -- uvx --from git+https://github.com/FredericMN/Coder-Codex-Gemini.git ccg-mcp 2>&1)
+    FALLBACK_OUTPUT=$(claude mcp add omcc --scope user --transport stdio -- uvx --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git omcc-mcp 2>&1)
     FALLBACK_EXIT_CODE=$?
     set -e
     if [ $FALLBACK_EXIT_CODE -eq 0 ]; then
@@ -156,7 +156,7 @@ fi
 write_step "Step 4: Installing Skills..."
 
 SKILLS_DIR="$HOME/.claude/skills"
-CCG_WORKFLOW_SOURCE="$SCRIPT_DIR/skills/ccg-workflow"
+OMCC_WORKFLOW_SOURCE="$SCRIPT_DIR/skills/omcc-workflow"
 GEMINI_COLLAB_SOURCE="$SCRIPT_DIR/skills/gemini-collaboration"
 
 # Create skills directory if it doesn't exist
@@ -165,14 +165,14 @@ if [ ! -d "$SKILLS_DIR" ]; then
     write_success "Created skills directory: $SKILLS_DIR"
 fi
 
-# Copy ccg-workflow skill
-if [ -d "$CCG_WORKFLOW_SOURCE" ]; then
-    DEST="$SKILLS_DIR/ccg-workflow"
+# Copy omcc-workflow skill
+if [ -d "$OMCC_WORKFLOW_SOURCE" ]; then
+    DEST="$SKILLS_DIR/omcc-workflow"
     rm -rf "$DEST"
-    cp -r "$CCG_WORKFLOW_SOURCE" "$DEST"
-    write_success "Installed ccg-workflow skill"
+    cp -r "$OMCC_WORKFLOW_SOURCE" "$DEST"
+    write_success "Installed omcc-workflow skill"
 else
-    write_warning "ccg-workflow skill not found, skipping"
+    write_warning "omcc-workflow skill not found, skipping"
 fi
 
 # Copy gemini-collaboration skill
@@ -191,34 +191,34 @@ fi
 write_step "Step 5: Configuring global CLAUDE.md..."
 
 CLAUDE_MD_PATH="$HOME/.claude/CLAUDE.md"
-CCG_MARKER="# CCG Configuration"
-CCG_CONFIG_PATH="$SCRIPT_DIR/templates/ccg-global-prompt.md"
+OMCC_MARKER="# OMCC Configuration"
+OMCC_CONFIG_PATH="$SCRIPT_DIR/templates/omcc-global-prompt.md"
 
 # Create .claude directory if it doesn't exist
 mkdir -p "$HOME/.claude"
 
 if [ ! -f "$CLAUDE_MD_PATH" ]; then
-    # Create new file with CCG config
-    if [ -f "$CCG_CONFIG_PATH" ]; then
-        cp "$CCG_CONFIG_PATH" "$CLAUDE_MD_PATH"
+    # Create new file with OMCC config
+    if [ -f "$OMCC_CONFIG_PATH" ]; then
+        cp "$OMCC_CONFIG_PATH" "$CLAUDE_MD_PATH"
         write_success "Created global CLAUDE.md"
     else
-        write_warning "CCG global prompt template not found at $CCG_CONFIG_PATH"
-        write_warning "Please manually copy the CCG configuration to $CLAUDE_MD_PATH"
+        write_warning "OMCC global prompt template not found at $OMCC_CONFIG_PATH"
+        write_warning "Please manually copy the OMCC configuration to $CLAUDE_MD_PATH"
     fi
 else
-    # Check if CCG config already exists
-    if grep -qF "$CCG_MARKER" "$CLAUDE_MD_PATH"; then
-        write_warning "CCG configuration already exists in CLAUDE.md, skipping"
+    # Check if OMCC config already exists
+    if grep -qF "$OMCC_MARKER" "$CLAUDE_MD_PATH"; then
+        write_warning "OMCC configuration already exists in CLAUDE.md, skipping"
     else
-        # Append CCG config
-        if [ -f "$CCG_CONFIG_PATH" ]; then
+        # Append OMCC config
+        if [ -f "$OMCC_CONFIG_PATH" ]; then
             echo "" >> "$CLAUDE_MD_PATH"
-            cat "$CCG_CONFIG_PATH" >> "$CLAUDE_MD_PATH"
-            write_success "Appended CCG configuration to CLAUDE.md"
+            cat "$OMCC_CONFIG_PATH" >> "$CLAUDE_MD_PATH"
+            write_success "Appended OMCC configuration to CLAUDE.md"
         else
-            write_warning "CCG global prompt template not found at $CCG_CONFIG_PATH"
-            write_warning "Please manually copy the CCG configuration to $CLAUDE_MD_PATH"
+            write_warning "OMCC global prompt template not found at $OMCC_CONFIG_PATH"
+            write_warning "Please manually copy the OMCC configuration to $CLAUDE_MD_PATH"
         fi
     fi
 fi
@@ -228,7 +228,7 @@ fi
 # ==============================================================================
 write_step "Step 6: Configuring Coder..."
 
-CONFIG_DIR="$HOME/.ccg-mcp"
+CONFIG_DIR="$HOME/.omcc-mcp"
 CONFIG_PATH="$CONFIG_DIR/config.toml"
 
 # Create config directory if it doesn't exist
@@ -243,13 +243,13 @@ if [ -f "$CONFIG_PATH" ]; then
         # Jump to Done
         echo ""
         echo -e "${GREEN}============================================================${NC}"
-        write_success "CCG setup completed successfully!"
+        write_success "OMCC setup completed successfully!"
         echo -e "${GREEN}============================================================${NC}"
         echo ""
         echo "Next steps:"
         echo "  1. Restart Claude Code CLI"
         echo "  2. Verify MCP server: claude mcp list"
-        echo "  3. Check available skills: /ccg-workflow"
+        echo "  3. Check available skills: /omcc-workflow"
         echo ""
         exit 0
     fi
@@ -301,12 +301,12 @@ write_success "Coder configuration saved to $CONFIG_PATH"
 # ==============================================================================
 echo ""
 echo -e "${GREEN}============================================================${NC}"
-write_success "CCG setup completed successfully!"
+write_success "OMCC setup completed successfully!"
 echo -e "${GREEN}============================================================${NC}"
 echo ""
 
 echo "Next steps:"
 echo "  1. Restart Claude Code CLI"
 echo "  2. Verify MCP server: claude mcp list"
-echo "  3. Check available skills: /ccg-workflow"
+echo "  3. Check available skills: /omcc-workflow"
 echo ""

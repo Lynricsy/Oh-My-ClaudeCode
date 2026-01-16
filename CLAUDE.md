@@ -48,7 +48,7 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 
 ```
 Oh-My-ClaudeCode/
-├── src/ccg_mcp/              # 源代码
+├── src/omcc_mcp/             # 源代码
 │   ├── __init__.py
 │   ├── cli.py                # 入口点
 │   ├── server.py             # MCP 服务器主体
@@ -62,10 +62,10 @@ Oh-My-ClaudeCode/
 │       ├── librarian.py      # Librarian 工具（深度研究）
 │       └── looker.py         # Looker 工具（多模态分析）
 ├── skills/                   # Skills 工作流指导
-│   ├── ccg-workflow/         # CCG 协作流程
+│   ├── omcc-workflow/        # OMCC 协作流程
 │   └── gemini-collaboration/ # Gemini 协作指南
 ├── templates/                # 模板文件
-│   └── ccg-global-prompt.md  # 全局 CLAUDE.md 模板
+│   └── omcc-global-prompt.md # 全局 CLAUDE.md 模板
 ├── cases/                    # 实测案例
 ├── pyproject.toml
 ├── config.example.toml       # 配置文件示例
@@ -140,10 +140,10 @@ Oh-My-ClaudeCode/
 
 ### 配置方案
 
-优先级：`~/.ccg-mcp/config.toml` > 环境变量
+优先级：`~/.omcc-mcp/config.toml` > 环境变量
 
 ```toml
-# ~/.ccg-mcp/config.toml
+# ~/.omcc-mcp/config.toml
 [coder]
 api_token = "your-api-token"  # 可配置任意支持 Claude Code API 的模型后端
 base_url = "https://open.bigmodel.cn/api/anthropic"  # 示例：GLM API
@@ -165,5 +165,5 @@ model = "glm-4.7"  # 示例：GLM-4.7，可替换为其他模型
 ---
 
 > 📅 项目创建: 2026-01-01
-> 📅 重命名为 CCG: 2026-01-03
+> 📅 重命名为 OMCC: 2026-01-03
 > 📅 重命名为 Oh-My-ClaudeCode: 2026-01-16

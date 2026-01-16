@@ -1,4 +1,4 @@
-# CCG One-Click Setup Script for Windows
+# OMCC One-Click Setup Script for Windows
 # This script automates the setup of Coder-Codex-Gemini MCP server
 
 param(
@@ -9,7 +9,7 @@ param(
 # Show help
 if ($Help) {
     Write-Host @"
-CCG One-Click Setup Script for Windows
+OMCC One-Click Setup Script for Windows
 
 Usage: .\setup.ps1 [-WhatIf] [-Help]
 
@@ -174,7 +174,7 @@ if ($DryRun) {
 Write-Step "Step 3: Registering MCP server..."
 
 if ($DryRun) {
-    Write-DryRun "Would run: claude mcp remove ccg --scope user"
+    Write-DryRun "Would run: claude mcp remove omcc --scope user"
 
     # Check uv version
     $useRefresh = $false
@@ -190,9 +190,9 @@ if ($DryRun) {
     } catch {}
 
     if ($useRefresh) {
-        Write-DryRun "Would run: claude mcp add ccg --scope user --transport stdio -- uvx --refresh --from git+https://github.com/FredericMN/Coder-Codex-Gemini.git ccg-mcp"
+        Write-DryRun "Would run: claude mcp add omcc --scope user --transport stdio -- uvx --refresh --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git omcc-mcp"
     } else {
-        Write-DryRun "Would run: claude mcp add ccg --scope user --transport stdio -- uvx --from git+https://github.com/FredericMN/Coder-Codex-Gemini.git ccg-mcp"
+        Write-DryRun "Would run: claude mcp add omcc --scope user --transport stdio -- uvx --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git omcc-mcp"
     }
     Write-Success "MCP server would be registered"
 } else {
@@ -206,10 +206,10 @@ if ($DryRun) {
     }
 
     try {
-        # Try to remove existing ccg MCP server if it exists
-        $null = & claude @("mcp","remove","ccg","--scope","user") 2>&1
+        # Try to remove existing omcc MCP server if it exists
+        $null = & claude @("mcp","remove","omcc","--scope","user") 2>&1
         if ($LASTEXITCODE -eq 0) {
-            Write-WarningMsg "Removed existing ccg MCP server"
+            Write-WarningMsg "Removed existing omcc MCP server"
         }
 
         # Check uv version to determine if --refresh is supported
@@ -237,7 +237,7 @@ if ($DryRun) {
             # Try with --refresh first
             $refreshSucceeded = $false
             try {
-                $refreshOutput = & claude @("mcp","add","ccg","--scope","user","--transport","stdio","--","uvx","--refresh","--from","git+https://github.com/FredericMN/Coder-Codex-Gemini.git","ccg-mcp") 2>&1
+                $refreshOutput = & claude @("mcp","add","omcc","--scope","user","--transport","stdio","--","uvx","--refresh","--from","git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git","omcc-mcp") 2>&1
                 if ($LASTEXITCODE -eq 0) {
                     $refreshSucceeded = $true
                 }
@@ -258,7 +258,7 @@ if ($DryRun) {
                     Write-WarningMsg "--refresh option was rejected, falling back to installation without --refresh..."
                     $fallbackSucceeded = $false
                     try {
-                        $fallbackOutput = & claude @("mcp","add","ccg","--scope","user","--transport","stdio","--","uvx","--from","git+https://github.com/FredericMN/Coder-Codex-Gemini.git","ccg-mcp") 2>&1
+                        $fallbackOutput = & claude @("mcp","add","omcc","--scope","user","--transport","stdio","--","uvx","--from","git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git","omcc-mcp") 2>&1
                         if ($LASTEXITCODE -eq 0) {
                             $fallbackSucceeded = $true
                         }
@@ -288,7 +288,7 @@ if ($DryRun) {
 
             $fallbackSucceeded = $false
             try {
-                $fallbackOutput = & claude @("mcp","add","ccg","--scope","user","--transport","stdio","--","uvx","--from","git+https://github.com/FredericMN/Coder-Codex-Gemini.git","ccg-mcp") 2>&1
+                $fallbackOutput = & claude @("mcp","add","omcc","--scope","user","--transport","stdio","--","uvx","--from","git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git","omcc-mcp") 2>&1
                 if ($LASTEXITCODE -eq 0) {
                     $fallbackSucceeded = $true
                 }
@@ -323,18 +323,18 @@ if ($DryRun) {
 Write-Step "Step 4: Installing Skills..."
 
 $skillsDir = "$env:USERPROFILE\.claude\skills"
-$ccgWorkflowSource = Join-Path $PSScriptRoot "skills\ccg-workflow"
+$omccWorkflowSource = Join-Path $PSScriptRoot "skills\omcc-workflow"
 $geminiCollabSource = Join-Path $PSScriptRoot "skills\gemini-collaboration"
 
 if ($DryRun) {
     if (!(Test-Path $skillsDir)) {
         Write-DryRun "Would create directory: $skillsDir"
     }
-    if (Test-Path $ccgWorkflowSource) {
-        Write-DryRun "Would copy: $ccgWorkflowSource -> $skillsDir\ccg-workflow"
-        Write-Success "ccg-workflow skill would be installed"
+    if (Test-Path $omccWorkflowSource) {
+        Write-DryRun "Would copy: $omccWorkflowSource -> $skillsDir\omcc-workflow"
+        Write-Success "omcc-workflow skill would be installed"
     } else {
-        Write-WarningMsg "ccg-workflow skill not found, would skip"
+        Write-WarningMsg "omcc-workflow skill not found, would skip"
     }
     if (Test-Path $geminiCollabSource) {
         Write-DryRun "Would copy: $geminiCollabSource -> $skillsDir\gemini-collaboration"
@@ -350,16 +350,16 @@ if ($DryRun) {
             Write-Success "Created skills directory: $skillsDir"
         }
 
-        # Copy ccg-workflow skill
-        if (Test-Path $ccgWorkflowSource) {
-            $dest = "$skillsDir\ccg-workflow"
+        # Copy omcc-workflow skill
+        if (Test-Path $omccWorkflowSource) {
+            $dest = "$skillsDir\omcc-workflow"
             if (Test-Path $dest) {
                 Remove-Item -Recurse -Force $dest
             }
-            Copy-Item -Recurse $ccgWorkflowSource $dest
-            Write-Success "Installed ccg-workflow skill"
+            Copy-Item -Recurse $omccWorkflowSource $dest
+            Write-Success "Installed omcc-workflow skill"
         } else {
-            Write-WarningMsg "ccg-workflow skill not found, skipping"
+            Write-WarningMsg "omcc-workflow skill not found, skipping"
         }
 
         # Copy gemini-collaboration skill
@@ -385,57 +385,57 @@ if ($DryRun) {
 Write-Step "Step 5: Configuring global CLAUDE.md..."
 
 $claudeMdPath = "$env:USERPROFILE\.claude\CLAUDE.md"
-$ccgMarker = "# CCG Configuration"
+$omccMarker = "# OMCC Configuration"
 
-# Read CCG config from external file to avoid encoding issues
-$ccgConfigPath = Join-Path $PSScriptRoot "templates\ccg-global-prompt.md"
+# Read OMCC config from external file to avoid encoding issues
+$omccConfigPath = Join-Path $PSScriptRoot "templates\omcc-global-prompt.md"
 
 if ($DryRun) {
     if (!(Test-Path $claudeMdPath)) {
-        if (Test-Path $ccgConfigPath) {
+        if (Test-Path $omccConfigPath) {
             Write-DryRun "Would create: $claudeMdPath (from template)"
             Write-Success "Global CLAUDE.md would be created"
         } else {
-            Write-WarningMsg "CCG global prompt template not found at $ccgConfigPath"
+            Write-WarningMsg "OMCC global prompt template not found at $omccConfigPath"
         }
     } else {
         $content = Get-Content $claudeMdPath -Raw -Encoding UTF8
-        if ($content -match [regex]::Escape($ccgMarker)) {
-            Write-WarningMsg "CCG configuration already exists in CLAUDE.md, would skip"
+        if ($content -match [regex]::Escape($omccMarker)) {
+            Write-WarningMsg "OMCC configuration already exists in CLAUDE.md, would skip"
         } else {
-            if (Test-Path $ccgConfigPath) {
-                Write-DryRun "Would append CCG configuration to: $claudeMdPath"
-                Write-Success "CCG configuration would be appended to CLAUDE.md"
+            if (Test-Path $omccConfigPath) {
+                Write-DryRun "Would append OMCC configuration to: $claudeMdPath"
+                Write-Success "OMCC configuration would be appended to CLAUDE.md"
             } else {
-                Write-WarningMsg "CCG global prompt template not found at $ccgConfigPath"
+                Write-WarningMsg "OMCC global prompt template not found at $omccConfigPath"
             }
         }
     }
 } else {
     try {
         if (!(Test-Path $claudeMdPath)) {
-            # Create new file with CCG config
-            if (Test-Path $ccgConfigPath) {
-                Copy-Item $ccgConfigPath $claudeMdPath
+            # Create new file with OMCC config
+            if (Test-Path $omccConfigPath) {
+                Copy-Item $omccConfigPath $claudeMdPath
                 Write-Success "Created global CLAUDE.md"
             } else {
-                Write-WarningMsg "CCG global prompt template not found at $ccgConfigPath"
-                Write-WarningMsg "Please manually copy the CCG configuration to $claudeMdPath"
+                Write-WarningMsg "OMCC global prompt template not found at $omccConfigPath"
+                Write-WarningMsg "Please manually copy the OMCC configuration to $claudeMdPath"
             }
         } else {
-            # Check if CCG config already exists
+            # Check if OMCC config already exists
             $content = Get-Content $claudeMdPath -Raw -Encoding UTF8
-            if ($content -match [regex]::Escape($ccgMarker)) {
-                Write-WarningMsg "CCG configuration already exists in CLAUDE.md, skipping"
+            if ($content -match [regex]::Escape($omccMarker)) {
+                Write-WarningMsg "OMCC configuration already exists in CLAUDE.md, skipping"
             } else {
-                # Append CCG config
-                if (Test-Path $ccgConfigPath) {
-                    $ccgContent = Get-Content $ccgConfigPath -Raw -Encoding UTF8
-                    Add-Content -Path $claudeMdPath -Value "`n$ccgContent" -Encoding UTF8
-                    Write-Success "Appended CCG configuration to CLAUDE.md"
+                # Append OMCC config
+                if (Test-Path $omccConfigPath) {
+                    $omccContent = Get-Content $omccConfigPath -Raw -Encoding UTF8
+                    Add-Content -Path $claudeMdPath -Value "`n$omccContent" -Encoding UTF8
+                    Write-Success "Appended OMCC configuration to CLAUDE.md"
                 } else {
-                    Write-WarningMsg "CCG global prompt template not found at $ccgConfigPath"
-                    Write-WarningMsg "Please manually copy the CCG configuration to $claudeMdPath"
+                    Write-WarningMsg "OMCC global prompt template not found at $omccConfigPath"
+                    Write-WarningMsg "Please manually copy the OMCC configuration to $claudeMdPath"
                 }
             }
         }
@@ -450,7 +450,7 @@ if ($DryRun) {
 # ==============================================================================
 Write-Step "Step 6: Configuring Coder..."
 
-$configDir = "$env:USERPROFILE\.ccg-mcp"
+$configDir = "$env:USERPROFILE\.omcc-mcp"
 $configPath = "$configDir\config.toml"
 
 if ($DryRun) {
@@ -550,12 +550,12 @@ if ($DryRun) {
     Write-Host "  .\setup.ps1" -ForegroundColor White
 } else {
     Write-Host "`n============================================================" -ForegroundColor Green
-    Write-Success "CCG setup completed successfully!"
+    Write-Success "OMCC setup completed successfully!"
     Write-Host "============================================================`n" -ForegroundColor Green
 
     Write-Host "Next steps:" -ForegroundColor Cyan
     Write-Host "  1. Restart Claude Code CLI" -ForegroundColor White
     Write-Host "  2. Verify MCP server: claude mcp list" -ForegroundColor White
-    Write-Host "  3. Check available skills: /ccg-workflow" -ForegroundColor White
+    Write-Host "  3. Check available skills: /omcc-workflow" -ForegroundColor White
 }
 Write-Host ""

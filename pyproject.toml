@@ -3,9 +3,9 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ccg-mcp"
+name = "omcc-mcp"
 version = "0.1.0"
-description = "Claude + Coder + Codex + Gemini 多模型协作 MCP 服务器"
+description = "Oh-My-ClaudeCode 多代理协作 MCP 服务器"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -13,10 +13,10 @@ dependencies = [
     "pydantic>=2.0",
 ]
 authors = [
-    { name = "CCG-MCP Contributors" },
+    { name = "OMCC-MCP Contributors" },
 ]
 license = { text = "MIT" }
-keywords = ["mcp", "fastmcp", "coder", "codex", "gemini", "claude"]
+keywords = ["mcp", "fastmcp", "coder", "codex", "gemini", "claude", "opencode"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
@@ -25,13 +25,13 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/FredericMN/Coder-Codex-Gemini"
+Homepage = "https://github.com/Lynricsy/Oh-My-ClaudeCode"
 
 [project.scripts]
-ccg-mcp = "ccg_mcp.cli:main"
+omcc-mcp = "omcc_mcp.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ccg_mcp"]
+packages = ["src/omcc_mcp"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/ccg_mcp", "README.md", "LICENSE"]
+include = ["src/omcc_mcp", "README.md", "LICENSE"]
