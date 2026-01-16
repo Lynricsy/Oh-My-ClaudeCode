@@ -225,6 +225,7 @@ write_step "Step 6: Configuring Gemini CLI..."
 GEMINI_DIR="$HOME/.gemini"
 GEMINI_SETTINGS_SOURCE="$SCRIPT_DIR/templates/gemini/settings.json"
 GEMINI_SETTINGS_PATH="$GEMINI_DIR/settings.json"
+GEMINI_ENV_PATH="$GEMINI_DIR/.env"
 
 # Check if gemini CLI is installed
 if command -v gemini &> /dev/null; then
@@ -244,7 +245,176 @@ if command -v gemini &> /dev/null; then
         fi
     fi
 
-    # Try to install UI/UX Pro Max skill (optional, requires npm)
+    # =========================================================================
+    # Step 6.1: Check MCP dependencies
+    # =========================================================================
+    echo ""
+    echo -e "${CYAN}  Checking MCP dependencies...${NC}"
+
+    # Check Docker (required for github MCP)
+    DOCKER_AVAILABLE=false
+    if command -v docker &> /dev/null; then
+        # Check if Docker daemon is running
+        if docker info &> /dev/null; then
+            DOCKER_AVAILABLE=true
+            write_success "Docker is installed and running (required for github MCP)"
+        else
+            write_warning "Docker is installed but not running"
+            write_warning "Start Docker to enable github MCP: sudo systemctl start docker"
+        fi
+    else
+        write_warning "Docker not installed (required for github MCP)"
+        write_warning "Install Docker: https://docs.docker.com/get-docker/"
+    fi
+
+    # Check npm/npx (required for firecrawl MCP)
+    NPM_AVAILABLE=false
+    if command -v npx &> /dev/null; then
+        NPM_AVAILABLE=true
+        write_success "npx is available (required for firecrawl MCP)"
+    else
+        write_warning "npx not found (required for firecrawl MCP)"
+        write_warning "Install Node.js: https://nodejs.org/"
+    fi
+
+    # =========================================================================
+    # Step 6.2: Configure API keys for MCP servers
+    # =========================================================================
+    echo ""
+    echo -e "${CYAN}  Configuring API keys for MCP servers...${NC}"
+    echo ""
+    echo "The following MCP servers require API keys:"
+    echo "  - github MCP: requires GITHUB_PERSONAL_ACCESS_TOKEN"
+    echo "    Get it from: https://github.com/settings/tokens"
+    echo "    Required scopes: repo, read:org, read:user"
+    echo ""
+    echo "  - firecrawl MCP: requires FIRECRAWL_API_KEY"
+    echo "    Get it from: https://www.firecrawl.dev/app/api-keys"
+    echo ""
+
+    # Initialize env content
+    ENV_CONTENT=""
+    ENV_UPDATED=false
+
+    # Load existing env if present
+    if [ -f "$GEMINI_ENV_PATH" ]; then
+        source "$GEMINI_ENV_PATH" 2>/dev/null || true
+    fi
+
+    # Ask for GitHub token
+    if [ -n "$GITHUB_PERSONAL_ACCESS_TOKEN" ]; then
+        write_success "GITHUB_PERSONAL_ACCESS_TOKEN already set"
+        read -p "Update it? (y/N): " UPDATE_GITHUB
+        if [ "$UPDATE_GITHUB" = "y" ] || [ "$UPDATE_GITHUB" = "Y" ]; then
+            read -s -p "Enter your GitHub Personal Access Token: " NEW_GITHUB_TOKEN
+            echo
+            if [ -n "$NEW_GITHUB_TOKEN" ]; then
+                GITHUB_PERSONAL_ACCESS_TOKEN="$NEW_GITHUB_TOKEN"
+                ENV_UPDATED=true
+            fi
+        fi
+    else
+        read -p "Configure GITHUB_PERSONAL_ACCESS_TOKEN now? (Y/n): " CONFIG_GITHUB
+        if [ "$CONFIG_GITHUB" != "n" ] && [ "$CONFIG_GITHUB" != "N" ]; then
+            read -s -p "Enter your GitHub Personal Access Token: " GITHUB_PERSONAL_ACCESS_TOKEN
+            echo
+            if [ -n "$GITHUB_PERSONAL_ACCESS_TOKEN" ]; then
+                ENV_UPDATED=true
+                write_success "GitHub token configured"
+            else
+                write_warning "Skipped GitHub token (github MCP will not work)"
+            fi
+        else
+            write_warning "Skipped GitHub token (github MCP will not work)"
+        fi
+    fi
+
+    # Ask for Firecrawl API key
+    if [ -n "$FIRECRAWL_API_KEY" ]; then
+        write_success "FIRECRAWL_API_KEY already set"
+        read -p "Update it? (y/N): " UPDATE_FIRECRAWL
+        if [ "$UPDATE_FIRECRAWL" = "y" ] || [ "$UPDATE_FIRECRAWL" = "Y" ]; then
+            read -s -p "Enter your Firecrawl API Key: " NEW_FIRECRAWL_KEY
+            echo
+            if [ -n "$NEW_FIRECRAWL_KEY" ]; then
+                FIRECRAWL_API_KEY="$NEW_FIRECRAWL_KEY"
+                ENV_UPDATED=true
+            fi
+        fi
+    else
+        read -p "Configure FIRECRAWL_API_KEY now? (Y/n): " CONFIG_FIRECRAWL
+        if [ "$CONFIG_FIRECRAWL" != "n" ] && [ "$CONFIG_FIRECRAWL" != "N" ]; then
+            read -s -p "Enter your Firecrawl API Key: " FIRECRAWL_API_KEY
+            echo
+            if [ -n "$FIRECRAWL_API_KEY" ]; then
+                ENV_UPDATED=true
+                write_success "Firecrawl API key configured"
+            else
+                write_warning "Skipped Firecrawl API key (firecrawl MCP will not work)"
+            fi
+        else
+            write_warning "Skipped Firecrawl API key (firecrawl MCP will not work)"
+        fi
+    fi
+
+    # Write env file if we have any tokens
+    if [ -n "$GITHUB_PERSONAL_ACCESS_TOKEN" ] || [ -n "$FIRECRAWL_API_KEY" ]; then
+        cat > "$GEMINI_ENV_PATH" << EOF
+# Gemini CLI MCP API Keys
+# Auto-generated by OMCC setup script
+# Add 'source ~/.gemini/.env' to your shell profile to load these automatically
+
+EOF
+        if [ -n "$GITHUB_PERSONAL_ACCESS_TOKEN" ]; then
+            echo "export GITHUB_PERSONAL_ACCESS_TOKEN=\"$GITHUB_PERSONAL_ACCESS_TOKEN\"" >> "$GEMINI_ENV_PATH"
+        fi
+        if [ -n "$FIRECRAWL_API_KEY" ]; then
+            echo "export FIRECRAWL_API_KEY=\"$FIRECRAWL_API_KEY\"" >> "$GEMINI_ENV_PATH"
+        fi
+        chmod 600 "$GEMINI_ENV_PATH"
+        write_success "API keys saved to $GEMINI_ENV_PATH"
+
+        # Detect shell and suggest adding source command
+        SHELL_NAME=$(basename "$SHELL")
+        case "$SHELL_NAME" in
+            bash)
+                SHELL_RC="$HOME/.bashrc"
+                ;;
+            zsh)
+                SHELL_RC="$HOME/.zshrc"
+                ;;
+            fish)
+                SHELL_RC="$HOME/.config/fish/config.fish"
+                ;;
+            *)
+                SHELL_RC="$HOME/.profile"
+                ;;
+        esac
+
+        # Check if source command already exists
+        if [ -f "$SHELL_RC" ] && grep -q "source.*\.gemini/.env" "$SHELL_RC" 2>/dev/null; then
+            write_success "Shell profile already configured to load Gemini env"
+        else
+            echo ""
+            read -p "Add 'source ~/.gemini/.env' to $SHELL_RC? (Y/n): " ADD_SOURCE
+            if [ "$ADD_SOURCE" != "n" ] && [ "$ADD_SOURCE" != "N" ]; then
+                echo "" >> "$SHELL_RC"
+                echo "# OMCC: Load Gemini CLI API keys" >> "$SHELL_RC"
+                echo "[ -f ~/.gemini/.env ] && source ~/.gemini/.env" >> "$SHELL_RC"
+                write_success "Added source command to $SHELL_RC"
+                write_warning "Run 'source $SHELL_RC' or restart your terminal to apply"
+            else
+                write_warning "Remember to run 'source ~/.gemini/.env' before using Gemini CLI"
+            fi
+        fi
+    fi
+
+    # =========================================================================
+    # Step 6.3: Install UI/UX Pro Max skill (optional)
+    # =========================================================================
+    echo ""
+    echo -e "${CYAN}  Installing UI/UX Pro Max skill (optional)...${NC}"
+
     if command -v npm &> /dev/null; then
         # Check if uipro is already installed
         if command -v uipro &> /dev/null; then

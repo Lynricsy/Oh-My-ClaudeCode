@@ -442,6 +442,7 @@ Write-Step "Step 6: Configuring Gemini CLI..."
 $geminiDir = "$env:USERPROFILE\.gemini"
 $geminiSettingsSource = Join-Path $PSScriptRoot "templates\gemini\settings.json"
 $geminiSettingsPath = "$geminiDir\settings.json"
+$geminiEnvPath = "$geminiDir\.env.ps1"
 
 if ($DryRun) {
     # Check if gemini CLI is available
@@ -460,6 +461,11 @@ if ($DryRun) {
                 Write-Success "Gemini settings.json would be installed"
             }
         }
+
+        Write-DryRun "Would check Docker availability for github MCP"
+        Write-DryRun "Would check npx availability for firecrawl MCP"
+        Write-DryRun "Would prompt for: GITHUB_PERSONAL_ACCESS_TOKEN, FIRECRAWL_API_KEY"
+        Write-DryRun "Would create env file: $geminiEnvPath"
 
         try {
             $null = Get-Command npm -ErrorAction Stop
@@ -502,7 +508,195 @@ if ($DryRun) {
                 }
             }
 
-            # Try to install UI/UX Pro Max skill (optional, requires npm)
+            # =================================================================
+            # Step 6.1: Check MCP dependencies
+            # =================================================================
+            Write-Host ""
+            Write-Host "  Checking MCP dependencies..." -ForegroundColor Cyan
+
+            # Check Docker (required for github MCP)
+            $dockerAvailable = $false
+            try {
+                $null = Get-Command docker -ErrorAction Stop
+                # Check if Docker daemon is running
+                $dockerInfo = docker info 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    $dockerAvailable = $true
+                    Write-Success "Docker is installed and running (required for github MCP)"
+                } else {
+                    Write-WarningMsg "Docker is installed but not running"
+                    Write-WarningMsg "Start Docker Desktop to enable github MCP"
+                }
+            } catch {
+                Write-WarningMsg "Docker not installed (required for github MCP)"
+                Write-WarningMsg "Install Docker: https://docs.docker.com/get-docker/"
+            }
+
+            # Check npm/npx (required for firecrawl MCP)
+            $npxAvailable = $false
+            try {
+                $null = Get-Command npx -ErrorAction Stop
+                $npxAvailable = $true
+                Write-Success "npx is available (required for firecrawl MCP)"
+            } catch {
+                Write-WarningMsg "npx not found (required for firecrawl MCP)"
+                Write-WarningMsg "Install Node.js: https://nodejs.org/"
+            }
+
+            # =================================================================
+            # Step 6.2: Configure API keys for MCP servers
+            # =================================================================
+            Write-Host ""
+            Write-Host "  Configuring API keys for MCP servers..." -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "The following MCP servers require API keys:"
+            Write-Host "  - github MCP: requires GITHUB_PERSONAL_ACCESS_TOKEN"
+            Write-Host "    Get it from: https://github.com/settings/tokens"
+            Write-Host "    Required scopes: repo, read:org, read:user"
+            Write-Host ""
+            Write-Host "  - firecrawl MCP: requires FIRECRAWL_API_KEY"
+            Write-Host "    Get it from: https://www.firecrawl.dev/app/api-keys"
+            Write-Host ""
+
+            # Load existing env if present
+            $githubToken = $env:GITHUB_PERSONAL_ACCESS_TOKEN
+            $firecrawlKey = $env:FIRECRAWL_API_KEY
+            if (Test-Path $geminiEnvPath) {
+                . $geminiEnvPath 2>$null
+                if ($env:GITHUB_PERSONAL_ACCESS_TOKEN) { $githubToken = $env:GITHUB_PERSONAL_ACCESS_TOKEN }
+                if ($env:FIRECRAWL_API_KEY) { $firecrawlKey = $env:FIRECRAWL_API_KEY }
+            }
+
+            $envUpdated = $false
+
+            # Ask for GitHub token
+            if ($githubToken) {
+                Write-Success "GITHUB_PERSONAL_ACCESS_TOKEN already set"
+                $updateGithub = Read-Host "Update it? (y/N)"
+                if ($updateGithub -eq "y" -or $updateGithub -eq "Y") {
+                    $secureToken = Read-Host "Enter your GitHub Personal Access Token" -AsSecureString
+                    $githubToken = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken))
+                    if ($githubToken) {
+                        $envUpdated = $true
+                    }
+                }
+            } else {
+                $configGithub = Read-Host "Configure GITHUB_PERSONAL_ACCESS_TOKEN now? (Y/n)"
+                if ($configGithub -ne "n" -and $configGithub -ne "N") {
+                    $secureToken = Read-Host "Enter your GitHub Personal Access Token" -AsSecureString
+                    $githubToken = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken))
+                    if ($githubToken) {
+                        $envUpdated = $true
+                        Write-Success "GitHub token configured"
+                    } else {
+                        Write-WarningMsg "Skipped GitHub token (github MCP will not work)"
+                    }
+                } else {
+                    Write-WarningMsg "Skipped GitHub token (github MCP will not work)"
+                }
+            }
+
+            # Ask for Firecrawl API key
+            if ($firecrawlKey) {
+                Write-Success "FIRECRAWL_API_KEY already set"
+                $updateFirecrawl = Read-Host "Update it? (y/N)"
+                if ($updateFirecrawl -eq "y" -or $updateFirecrawl -eq "Y") {
+                    $secureKey = Read-Host "Enter your Firecrawl API Key" -AsSecureString
+                    $firecrawlKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey))
+                    if ($firecrawlKey) {
+                        $envUpdated = $true
+                    }
+                }
+            } else {
+                $configFirecrawl = Read-Host "Configure FIRECRAWL_API_KEY now? (Y/n)"
+                if ($configFirecrawl -ne "n" -and $configFirecrawl -ne "N") {
+                    $secureKey = Read-Host "Enter your Firecrawl API Key" -AsSecureString
+                    $firecrawlKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey))
+                    if ($firecrawlKey) {
+                        $envUpdated = $true
+                        Write-Success "Firecrawl API key configured"
+                    } else {
+                        Write-WarningMsg "Skipped Firecrawl API key (firecrawl MCP will not work)"
+                    }
+                } else {
+                    Write-WarningMsg "Skipped Firecrawl API key (firecrawl MCP will not work)"
+                }
+            }
+
+            # Write env file if we have any tokens
+            if ($githubToken -or $firecrawlKey) {
+                $envContent = @"
+# Gemini CLI MCP API Keys
+# Auto-generated by OMCC setup script
+# Add this to your PowerShell profile to load automatically:
+#   . `$env:USERPROFILE\.gemini\.env.ps1
+
+"@
+                if ($githubToken) {
+                    $envContent += "`$env:GITHUB_PERSONAL_ACCESS_TOKEN = `"$githubToken`"`n"
+                }
+                if ($firecrawlKey) {
+                    $envContent += "`$env:FIRECRAWL_API_KEY = `"$firecrawlKey`"`n"
+                }
+
+                [System.IO.File]::WriteAllText($geminiEnvPath, $envContent, [System.Text.UTF8Encoding]::new($false))
+
+                # Set file permissions - only current user can read/write
+                $acl = Get-Acl $geminiEnvPath
+                $acl.SetAccessRuleProtection($true, $false)
+                $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "Allow")
+                $acl.SetAccessRule($rule)
+                Set-Acl $geminiEnvPath $acl
+
+                Write-Success "API keys saved to $geminiEnvPath"
+
+                # Check if PowerShell profile exists and suggest adding source command
+                $profilePath = $PROFILE.CurrentUserAllHosts
+                $profileDir = Split-Path $profilePath -Parent
+
+                if (!(Test-Path $profileDir)) {
+                    New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
+                }
+
+                if (Test-Path $profilePath) {
+                    $profileContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
+                    if ($profileContent -match "\.gemini\\\.env\.ps1") {
+                        Write-Success "PowerShell profile already configured to load Gemini env"
+                    } else {
+                        Write-Host ""
+                        $addProfile = Read-Host "Add Gemini env loading to PowerShell profile? (Y/n)"
+                        if ($addProfile -ne "n" -and $addProfile -ne "N") {
+                            Add-Content -Path $profilePath -Value "`n# OMCC: Load Gemini CLI API keys"
+                            Add-Content -Path $profilePath -Value "if (Test-Path `"`$env:USERPROFILE\.gemini\.env.ps1`") { . `"`$env:USERPROFILE\.gemini\.env.ps1`" }"
+                            Write-Success "Added to PowerShell profile: $profilePath"
+                            Write-WarningMsg "Restart PowerShell or run: . `"$profilePath`""
+                        } else {
+                            Write-WarningMsg "Remember to run: . `"$geminiEnvPath`" before using Gemini CLI"
+                        }
+                    }
+                } else {
+                    Write-Host ""
+                    $createProfile = Read-Host "Create PowerShell profile with Gemini env loading? (Y/n)"
+                    if ($createProfile -ne "n" -and $createProfile -ne "N") {
+                        $profileContent = @"
+# OMCC: Load Gemini CLI API keys
+if (Test-Path "`$env:USERPROFILE\.gemini\.env.ps1") { . "`$env:USERPROFILE\.gemini\.env.ps1" }
+"@
+                        [System.IO.File]::WriteAllText($profilePath, $profileContent, [System.Text.UTF8Encoding]::new($false))
+                        Write-Success "Created PowerShell profile: $profilePath"
+                        Write-WarningMsg "Restart PowerShell or run: . `"$profilePath`""
+                    } else {
+                        Write-WarningMsg "Remember to run: . `"$geminiEnvPath`" before using Gemini CLI"
+                    }
+                }
+            }
+
+            # =================================================================
+            # Step 6.3: Install UI/UX Pro Max skill (optional)
+            # =================================================================
+            Write-Host ""
+            Write-Host "  Installing UI/UX Pro Max skill (optional)..." -ForegroundColor Cyan
+
             $npmInstalled = $false
             try {
                 $null = Get-Command npm -ErrorAction Stop
