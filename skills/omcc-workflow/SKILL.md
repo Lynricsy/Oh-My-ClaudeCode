@@ -80,7 +80,9 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供全方位研究能力：
 | MCP | 功能 | 示例场景 |
 |-----|------|----------|
 | **context7** | 官方文档查询 | "React useEffect 最佳实践" |
-| **websearch** | Exa 网络搜索 | "最新的 TypeScript 5.5 特性" |
+| **exa** | 主力网络搜索 | "最新的 TypeScript 5.5 特性" |
+| **open-websearch** | 免费备选搜索 | "DuckDuckGo 搜索某个问题" |
+| **Playwright** | 浏览器自动化 | "抓取需要 JS 渲染的页面" |
 | **github** | GitHub 代码搜索 | "TanStack Query 的 useQuery 实现" |
 | **firecrawl** | 网页抓取 | "深入阅读某篇技术文章" |
 

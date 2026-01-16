@@ -5,19 +5,31 @@
     },
     "exa": {
       "command": "bunx",
-      "args": ["-y", "exa-mcp-server@latest"],
+      "args": [
+        "-y",
+        "exa-mcp-server@latest"
+      ],
       "env": {
         "EXA_API_KEY": "${EXA_API_KEY}"
       }
     },
     "open-websearch": {
       "command": "bunx",
-      "args": ["-y", "open-websearch@latest"],
+      "args": [
+        "-y",
+        "open-websearch@latest"
+      ],
       "env": {}
     },
     "Playwright": {
       "command": "bunx",
-      "args": ["-y", "@playwright/mcp@latest"],
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--headless",
+        "--isolated",
+        "--no-sandbox"
+      ],
       "env": {}
     },
     "github": {
@@ -36,7 +48,10 @@
     },
     "firecrawl": {
       "command": "npx",
-      "args": ["-y", "firecrawl-mcp"],
+      "args": [
+        "-y",
+        "firecrawl-mcp"
+      ],
       "env": {
         "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
       }

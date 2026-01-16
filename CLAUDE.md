@@ -35,14 +35,17 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 | MCP | 功能 |
 |-----|------|
 | **context7** | 官方文档查询（快速获取库/框架文档） |
-| **websearch** | Exa 网络搜索（获取最新网络信息） |
+| **exa** | 主力网络搜索（高质量搜索结果） |
+| **open-websearch** | 免费备选搜索（DuckDuckGo/Bing/Brave） |
+| **Playwright** | 浏览器自动化（headless 模式） |
 | **github** | GitHub 搜索（代码示例、issues、PRs） |
 | **firecrawl** | 网页抓取（深入阅读网页内容） |
 
 使用场景：
-- "React useEffect 的最佳实践" → context7 + websearch
+- "React useEffect 的最佳实践" → context7 + exa
 - "找到 TanStack Query 的 useQuery 实现" → github
-- "为什么 Zod 报这个错误" → websearch + github issues
+- "为什么 Zod 报这个错误" → exa + github issues
+- "抓取某网页的完整内容" → Playwright / firecrawl
 
 ## 项目结构
 
