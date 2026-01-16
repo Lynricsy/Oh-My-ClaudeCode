@@ -708,12 +708,8 @@ uv run omcc-mcp
 
 ## 🙏 致谢
 
-本项目的灵感来源：
-
-- **[Coder-Codex-Gemini](https://github.com/FredericMN/Coder-Codex-Gemini)** - 多代理协作的初始灵感
-- **[ampcode](https://ampcode.us/)** - 优秀的 Claude Code 增强实践
-
-感谢这些项目对 AI 协作领域的探索和贡献！🐱
+- **[Coder-Codex-Gemini](https://github.com/FredericMN/Coder-Codex-Gemini)** - 本项目的核心灵感来源，提供了 Claude + Coder + Codex + Gemini 多模型协作的架构设计与实现参考
+- **[Amp](https://ampcode.com/)** - Sourcegraph 开发的前沿 AI 编码代理，其终端优先的设计理念和代理式编码实践为本项目提供了宝贵启发
 
 ## 📄 License
 
