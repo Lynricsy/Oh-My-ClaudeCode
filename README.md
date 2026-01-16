@@ -1,4 +1,4 @@
-# Coder-Codex-Gemini (CCG)
+# Oh-My-ClaudeCode (OMCC)
 
 <div align="center">
 
@@ -9,13 +9,11 @@
 
 [English Docs](README_EN.md)
 
-**Claude + Coder + Codex + Gemini 多模型协作框架**
+**Claude 多代理协作 MCP 服务器**
 
-让 **Claude/Sisyphus** 作为架构师调度 **Coder** 执行代码任务、**Codex** 审核代码质量，**Gemini** 提供专家咨询，<br>形成**自动化的多方协作闭环**。
+让 **Claude** 作为架构师调度多个专业代理执行各类任务，<br>形成**自动化的多方协作闭环**。
 
-**支持 Claude Code (MCP) 和 OpenCode (Oh-My-OpenCode) 两种运行环境**
-
-[快速开始](#-快速开始) • [核心特性](#-核心特性) • [架构说明](#-架构说明) • [工具详解](#️-工具详解) • [OpenCode 配置](#-opencode-配置)
+[快速开始](#-快速开始) • [核心特性](#-核心特性) • [架构说明](#-架构说明) • [工具详解](#️-工具详解)
 
 </div>
 
@@ -23,28 +21,15 @@
 
 ## 🌟 核心特性
 
-CCG 通过连接多个顶级模型，构建了一个高效、低成本且高质量的代码生成与审核流水线：
+OMCC 通过连接多个顶级模型，构建了一个高效、低成本且高质量的代码生成与审核流水线：
 
 | 维度 | 价值说明 |
 | :--- | :--- |
 | **🧠 成本优化** | **Claude/Sisyphus** 负责高智商思考与调度（贵但强），**Coder** 负责繁重的代码执行（量大管饱）。 |
 | **🧩 能力互补** | **Claude** 补足 **Coder** 的创造力短板，**Codex** 提供独立的第三方审核视角，**Gemini** 提供多元化专家意见。 |
 | **🛡️ 质量保障** | 引入双重审核机制：**Claude 初审** + **Codex 终审**，确保代码健壮性。 |
-| **🔄 全自动闭环** | 支持 `拆解` → `执行` → `审核` → `重试` 的全自动流程，最大程度减少人工干预。 |
-| **🔧 灵活架构** | 支持 **Claude Code (MCP)** 和 **OpenCode (Oh-My-OpenCode)** 两种运行环境，按需选择。 |
+| **🔄 全自动闘环** | 支持 `拆解` → `执行` → `审核` → `重试` 的全自动流程，最大程度减少人工干预。 |
 | **🔄 上下文保持** | **SESSION_ID** 会话复用机制确保多轮协作上下文连贯，支持长任务稳定执行，无信息丢失。 |
-
-### 🔀 两种运行环境
-
-| 特性 | Claude Code (MCP) | OpenCode (Oh-My-OpenCode) |
-|------|-------------------|---------------------------|
-| **架构师** | Claude | Sisyphus (Claude Opus) |
-| **工具调用** | MCP 协议 | 子代理委托 |
-| **Coder** | claude CLI + 可配置后端 | document-writer 代理 |
-| **Codex** | codex CLI | oracle 代理 |
-| **Gemini** | gemini CLI | frontend-ui-ux-engineer 代理 |
-| **适用场景** | Claude Code 用户 | 偏好开源、多 LLM 提供商 |
-| **配置复杂度** | 中等 | 较高 |
 
 ## 🤖 角色分工与协作
 
@@ -175,15 +160,15 @@ flowchart TB
 
 **Windows（双击运行或终端执行）**
 ```powershell
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
-cd Coder-Codex-Gemini
+git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
+cd Oh-My-ClaudeCode
 .\setup.bat
 ```
 
 **macOS/Linux**
 ```bash
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
-cd Coder-Codex-Gemini
+git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
+cd Oh-My-ClaudeCode
 chmod +x setup.sh && ./setup.sh
 ```
 
@@ -239,7 +224,7 @@ uv --version
 一键脚本默认使用远程安装方式，无需额外操作。如需手动安装：
 
 ```bash
-claude mcp add ccg -s user --transport stdio -- uvx --refresh --from git+https://github.com/FredericMN/Coder-Codex-Gemini.git ccg-mcp
+claude mcp add ccg -s user --transport stdio -- uvx --refresh --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git ccg-mcp
 ```
 
 #### 本地安装（仅开发调试）
@@ -697,186 +682,14 @@ ccg: ... - ✓ Connected
 
 ---
 
-## 🔄 OpenCode 配置
-
-> **OpenCode** 是 Claude Code 的开源替代方案，配合 **Oh-My-OpenCode** 插件可实现类似的多 Agent 编排效果。无需额外 MCP 及 SKILLS 支持。
-
-### 适用场景
-
-- 想要使用多种 LLM 提供商（Claude、GPT、Gemini）
-- 需要多 Agent 并行协作
-- 想要看到各个子代理的实时活动过程
-- 偏好开源工具
-
-### 🆕 新用户 vs 已安装用户
-
-| 用户类型 | 推荐方式 | 说明 |
-|----------|----------|------|
-| **未安装 OpenCode** | 一键脚本 | 自动完成所有安装和配置 |
-| **已安装 OpenCode + Oh-My-OpenCode** | 手动配置 | 参考模板文件，按需合并配置 |
-
-> ⚠️ **已安装用户注意**：一键脚本会检测已存在的配置文件并询问是否覆盖。如选择覆盖，原文件会自动备份。建议选择跳过，然后手动合并所需配置。
-
-### ⚡ 一键配置（全新用户推荐-未安装过OpenCode的用户）
-
-**Windows（双击运行或终端执行）**
-```powershell
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
-cd Coder-Codex-Gemini
-.\setup-opencode.bat
-```
-
-**macOS/Linux**
-```bash
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
-cd Coder-Codex-Gemini
-chmod +x setup-opencode.sh && ./setup-opencode.sh
-```
-
-**脚本执行流程**：
-
-1. **检查并安装依赖** - bun、opencode CLI
-2. **安装 Oh-My-OpenCode** - 交互式选择订阅状态
-3. **配置 opencode.json** - 模型定义和 API 配置
-4. **配置 oh-my-opencode.json** - CCG 代理角色定义
-5. **配置 AGENTS.md** - 协作协议
-
-### 📝 手动配置（已安装用户推荐）
-
-如果你已经安装了 OpenCode 和 Oh-My-OpenCode，建议参考以下模板文件手动合并配置：
-
-| 模板文件 | 目标位置 | 说明 |
-|----------|----------|------|
-| [`templates/opencode/opencode.json`](templates/opencode/opencode.json) | `~/.config/opencode/opencode.json` | 模型和 API 配置 |
-| [`templates/opencode/oh-my-opencode.json`](templates/opencode/oh-my-opencode.json) | `~/.config/opencode/oh-my-opencode.json` | 代理角色定义 |
-| [`templates/opencode/AGENTS.md`](templates/opencode/AGENTS.md) | `~/.config/opencode/AGENTS.md` | 协作协议 |
-
-#### 核心配置项
-
-**1. `oh-my-opencode.json` - 代理角色定义（重点）**
-
-主要需要配置的是各代理的 `prompt_append` 和 `model`：
-
-> 💡 **关于 `prompt_append`**：这是"追加提示词"，会在 Oh-My-OpenCode 原有提示词的基础上追加 CCG 协作规则，不会覆盖原有的 OMO 提示词，最大程度保持兼容性。
-
-```json
-{
-  "agents": {
-    "Sisyphus": {
-      "model": "anthropic/claude-opus-4-5-20251101",
-      "prompt_append": "## CCG 协作规则\n\n你是架构师..."
-    },
-    "document-writer": {
-      "model": "zhipuai-coding-plan/glm-4.7",
-      "prompt_append": "## ⚠️ 身份确认：你是 Coder 子代理..."
-    },
-    "oracle": {
-      "model": "openai/gpt-5.1-codex-mini",
-      "prompt_append": "## ⚠️ 身份确认：你是 Codex 子代理..."
-    },
-    "frontend-ui-ux-engineer": {
-      "model": "google/antigravity-gemini-3-pro-high",
-      "prompt_append": "## ⚠️ 身份确认：你是 Gemini 子代理..."
-    }
-  }
-}
-```
-
-- **`prompt_append`**：定义各代理的角色行为规范，是 CCG 协作的核心
-- **`model`**：可按需调整为你订阅的模型
-
-**2. `opencode.json` - 模型和 API 配置**
-
-我个人的使用场景下，大部分模型（OpenAI、Google、Zhipu）通过 OAuth 订阅或者官方API认证，无需额外配置 URL/API。
-
-**需要配置第三方中转的案例**（OpenAI、Claude等模型均适用）：
-
-```json
-{
-  "provider": {
-    "anthropic": {
-      "options": {
-        "baseURL": "https://your-proxy-api.com/v1",
-        "apiKey": "your-api-key"
-      },
-      "models": {
-        "claude-opus-4-5-20251101": { "name": "claude-opus-4-5-20251101" }
-      }
-    }
-  }
-}
-```
-
-#### ⚠️ 第三方 API 中转注意事项
-
-使用第三方 API 中转时，**模型名称的键（key）必须与中转站支持的模型名称完全一致**：
-
-```json
-// ✅ 正确：键名与中转站支持的模型名一致
-"models": {
-  "claude-opus-4-5-20251101": { "name": "claude-opus-4-5-20251101" }
-}
-
-// ❌ 错误：键名与中转站不匹配，会导致调用失败
-"models": {
-  "my-custom-name": { "name": "claude-opus-4-5-20251101" }
-}
-```
-
-**配置前请确认**：
-1. 你的中转站支持哪些模型名称
-2. 将 `models` 下的键名设置为中转站支持的确切名称
-3. 在 `oh-my-opencode.json` 中引用时使用 `provider/model-key` 格式（如 `anthropic/claude-opus-4-5-20251101`）
-
-### 代理角色映射（模板配置，具体模型可以自由更换）
-
-| CCG 角色 | OpenCode 代理 | 模型 | 职责 |
-|----------|---------------|------|------|
-| **架构师** | Sisyphus | Claude Opus 4.5 | 需求分析、任务拆解、最终决策 |
-| **Coder** | document-writer | GLM-4.7 | 代码生成、文档修改、批量任务 |
-| **Codex** | oracle | GPT-5.1 Codex Mini | 代码审核、架构咨询、质量把关 |
-| **Gemini** | frontend-ui-ux-engineer | Gemini 3 Pro High | 前端/UI、第二意见、独立视角 |
-
-### 认证配置
-
-安装完成后，需要为各提供商完成认证：
-
-```bash
-# 1. Anthropic (Claude)
-opencode auth login
-# → Select: Anthropic → Claude Pro/Max
-
-# 2. OpenAI (ChatGPT/Codex)
-opencode auth login
-# → Select: OpenAI → ChatGPT Plus/Pro (Codex Subscription)
-
-# 3. Google (Gemini)
-opencode auth login
-# → Select: Google → OAuth with Google (Antigravity)
-```
-
-> ⚠️ **重要**：使用 Antigravity 插件时，必须在 `oh-my-opencode.json` 中设置 `"google_auth": false`
-
-### 快捷键
-
-| 快捷键 | 功能 |
-|:-------|:-----|
-| `Tab` | 切换 build/plan 模式 |
-| `Ctrl+X` 然后 `B` | 切换 Sidebar |
-| `Ctrl+X` 然后 `→/←` | 切换子任务 |
-| `Ctrl+X` 然后 `↑` | 返回主任务 |
-| `Ctrl+P` | 命令面板 |
-
----
-
 ## 🧑‍💻 开发与贡献
 
 欢迎提交 Issue 和 Pull Request！
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/FredericMN/Coder-Codex-Gemini.git
-cd Coder-Codex-Gemini
+git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
+cd Oh-My-ClaudeCode
 
 # 2. 安装依赖 (使用 uv)
 uv sync
@@ -890,8 +703,8 @@ uv run ccg-mcp
 - **FastMCP**: [GitHub](https://github.com/jlowin/fastmcp) - 高效的 MCP 框架
 - **GLM API**: [智谱 AI](https://open.bigmodel.cn) - 强大的国产大模型（推荐作为 Coder 后端）
 - **Claude Code**: [Documentation](https://docs.anthropic.com/en/docs/claude-code)
-- **OpenCode**: [官方文档](https://opencode.ai/docs) - 开源 AI Coding Agent
-- **Oh-My-OpenCode**: [GitHub](https://github.com/code-yeongyu/oh-my-opencode) - OpenCode 多代理编排插件
+- **Codex CLI**: [Documentation](https://developers.openai.com/codex/quickstart)
+- **Gemini CLI**: [GitHub](https://github.com/google-gemini/gemini-cli)
 
 ## 📄 License
 

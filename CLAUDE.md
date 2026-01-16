@@ -1,6 +1,6 @@
-# Coder-Codex-Gemini (CCG)
+# Oh-My-ClaudeCode (OMCC)
 
-> Claude + Coder + Codex + Gemini 多模型协作 MCP 服务器
+> Claude + 多代理协作 MCP 服务器
 
 ## 项目定位
 
@@ -47,7 +47,7 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 ## 项目结构
 
 ```
-Coder-Codex-Gemini/
+Oh-My-ClaudeCode/
 ├── src/ccg_mcp/              # 源代码
 │   ├── __init__.py
 │   ├── cli.py                # 入口点
@@ -166,3 +166,4 @@ model = "glm-4.7"  # 示例：GLM-4.7，可替换为其他模型
 
 > 📅 项目创建: 2026-01-01
 > 📅 重命名为 CCG: 2026-01-03
+> 📅 重命名为 Oh-My-ClaudeCode: 2026-01-16
