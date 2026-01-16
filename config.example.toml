@@ -1,6 +1,10 @@
 # OMCC-MCP 配置文件示例
+# Oh-My-ClaudeCode 多代理协作 MCP 服务器
 # 请复制此文件到 ~/.omcc-mcp/config.toml 并填入你的配置
 
+# ============================================================================
+# Coder 配置（使用 claude CLI + 可配置后端）
+# ============================================================================
 [coder]
 # Coder 工具可配置任意支持 Claude Code API 的模型后端
 # 推荐使用 GLM-4.7 作为参考案例，也可选用其他模型（如 Minimax、DeepSeek 等）
@@ -10,19 +14,40 @@
 api_token = "your-api-token"
 
 # API 地址（必填，需支持 Claude Code API 协议）
-# GLM 示例：
 base_url = "https://open.bigmodel.cn/api/anthropic"
 
 # 模型名称（可选，默认 glm-4.7）
 model = "glm-4.7"
 
 # 额外环境变量（建议保留）
-# 可以添加任何需要传递给 Claude CLI 的环境变量
 [coder.env]
-# 禁用非必要的网络流量（遥测等），建议保持开启
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 
-# Codex 配置（可选）
-# 一般不需要配置，Codex 工具会使用 codex CLI 自己的配置
-# 如需在调用时覆盖模型，可通过 MCP 工具的 model 参数指定
-# 示例：调用时传入 model="o1"
+# ============================================================================
+# Gemini CLI 相关代理模型配置
+# ============================================================================
+
+# Gemini 通用代理（架构咨询、第二意见）
+[gemini]
+model = "gemini-3-pro"
+
+# Frontend 前端/UI 代理（设计、样式、动效）
+[frontend]
+model = "gemini-3-pro"
+
+# Librarian 研究代理（代码搜索、文档查询、网络研究）
+[librarian]
+model = "gemini-3-flash"
+
+# Looker 多模态代理（PDF、图片、图表分析）
+[looker]
+model = "gemini-3-flash"
+
+# ============================================================================
+# OpenCode 相关代理配置
+# ============================================================================
+
+# Chore 杂务代理（简单重复任务）
+# 使用 OpenCode CLI，model 格式为 provider/model
+[chore]
+# model = "anthropic/claude-sonnet-4-20250514"

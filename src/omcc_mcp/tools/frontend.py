@@ -584,8 +584,11 @@ async def frontend_tool(
     else:
         cmd.append("--yolo")
 
-    # 使用 gemini-3-pro 模型（更强的创意和代码能力）
-    cmd.extend(["--model", "gemini-3-pro"])
+    # 使用配置的模型（默认 gemini-3-pro，更强的创意和代码能力）
+    from omcc_mcp.config import get_agent_model
+    model_to_use = get_agent_model("frontend")
+    if model_to_use:
+        cmd.extend(["--model", model_to_use])
 
     # 会话恢复
     if SESSION_ID:

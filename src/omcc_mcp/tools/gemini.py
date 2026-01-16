@@ -692,9 +692,11 @@ async def gemini_tool(
             # read-only 需要启用 sandbox
             cmd.append("--sandbox")
 
-    # 指定模型（默认使用 gemini-3-pro-preview）
-    model_to_use = model if model else "gemini-3-pro-preview"
-    cmd.extend(["--model", model_to_use])
+    # 指定模型（优先级：参数 > 配置文件 > 默认值）
+    from omcc_mcp.config import get_agent_model
+    model_to_use = model if model else get_agent_model("gemini")
+    if model_to_use:
+        cmd.extend(["--model", model_to_use])
 
     # 会话恢复
     if SESSION_ID:

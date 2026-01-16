@@ -502,6 +502,12 @@ async def chore_tool(
     cmd = ["opencode", "run"]
     cmd.extend(["--format", "json"])  # JSON 格式输出
     
+    # 使用配置的模型
+    from omcc_mcp.config import get_agent_model
+    model_to_use = get_agent_model("chore")
+    if model_to_use:
+        cmd.extend(["--model", model_to_use])
+    
     # 会话恢复
     if SESSION_ID:
         cmd.extend(["--session", SESSION_ID])

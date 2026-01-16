@@ -649,8 +649,11 @@ async def librarian_tool(
         # 非只读模式使用 yolo
         cmd.append("--yolo")
 
-    # 使用 gemini-3-flash 模型（快速、低成本）
-    cmd.extend(["--model", "gemini-3-flash"])
+    # 使用配置的模型（默认 gemini-3-flash，快速、低成本）
+    from omcc_mcp.config import get_agent_model
+    model_to_use = get_agent_model("librarian")
+    if model_to_use:
+        cmd.extend(["--model", model_to_use])
 
     # 会话恢复
     if SESSION_ID:

@@ -2,6 +2,11 @@
 
 优先级：配置文件 > 环境变量
 配置文件路径：~/.omcc-mcp/config.toml
+
+支持配置：
+- coder: claude CLI 后端配置（API Token, Base URL, Model）
+- gemini/frontend/librarian/looker: Gemini CLI 模型配置
+- chore: OpenCode 模型配置
 """
 
 from __future__ import annotations
@@ -17,6 +22,20 @@ class ConfigError(Exception):
     pass
 
 
+# ============================================================================
+# 默认模型配置
+# ============================================================================
+
+DEFAULT_MODELS = {
+    "coder": "glm-4.7",               # Coder 默认使用 GLM-4.7
+    "gemini": "gemini-3-pro",         # Gemini 默认模型
+    "frontend": "gemini-3-pro",       # Frontend 默认使用 Gemini 3 Pro
+    "librarian": "gemini-3-flash",    # Librarian 默认使用 Gemini 3 Flash
+    "looker": "gemini-3-flash",       # Looker 默认使用 Gemini 3 Flash
+    "chore": None,                    # Chore 使用 OpenCode 默认模型
+}
+
+
 def get_config_path() -> Path:
     """获取配置文件路径"""
     return Path.home() / ".omcc-mcp" / "config.toml"
@@ -26,10 +45,10 @@ def load_config() -> dict[str, Any]:
     """加载配置，优先级：配置文件 > 环境变量
 
     Returns:
-        配置字典，包含 coder 和 codex 配置
+        配置字典
 
     Raises:
-        ConfigError: 未找到有效配置时抛出
+        ConfigError: 配置文件格式错误时抛出
     """
     config_path = get_config_path()
 
@@ -41,7 +60,7 @@ def load_config() -> dict[str, Any]:
         except tomllib.TOMLDecodeError as e:
             raise ConfigError(f"配置文件格式错误：{e}")
 
-    # 兜底：从环境变量读取
+    # 兜底：从环境变量读取 Coder 配置
     if os.environ.get("CODER_API_TOKEN"):
         return {
             "coder": {
@@ -50,31 +69,91 @@ def load_config() -> dict[str, Any]:
                     "CODER_BASE_URL",
                     "https://open.bigmodel.cn/api/anthropic"
                 ),
-                "model": os.environ.get("CODER_MODEL", "glm-4.7"),
+                "model": os.environ.get("CODER_MODEL", DEFAULT_MODELS["coder"]),
             }
         }
 
-    # 生成配置引导信息
-    config_example = '''# ~/.omcc-mcp/config.toml
+    # 返回空配置（允许使用默认值）
+    return {}
 
+
+def get_agent_model(agent: str, config: dict[str, Any] | None = None) -> str | None:
+    """获取代理的模型配置
+
+    Args:
+        agent: 代理名称 (coder, gemini, frontend, librarian, looker, chore)
+        config: 配置字典，如果为 None 则自动加载
+
+    Returns:
+        模型名称，如果未配置则返回默认值
+    """
+    if config is None:
+        config = get_config()
+
+    agent_config = config.get(agent, {})
+    
+    # 优先使用配置的模型
+    if isinstance(agent_config, dict) and "model" in agent_config:
+        return agent_config["model"]
+    
+    # 使用默认模型
+    return DEFAULT_MODELS.get(agent)
+
+
+def get_coder_config_or_none() -> dict[str, Any] | None:
+    """获取 Coder 配置，如果未配置则返回 None（不抛出异常）
+
+    Returns:
+        Coder 配置字典，或 None
+    """
+    try:
+        config = get_config()
+        coder_config = config.get("coder", {})
+        if coder_config.get("api_token"):
+            return coder_config
+        return None
+    except ConfigError:
+        return None
+
+
+def get_config_example() -> str:
+    """获取配置文件示例"""
+    return '''# ~/.omcc-mcp/config.toml
+# Oh-My-ClaudeCode 配置文件
+
+# ============================================================================
+# Coder 配置（使用 claude CLI + 可配置后端）
+# ============================================================================
 [coder]
-api_token = "your-api-token"  # 必填
-base_url = "https://open.bigmodel.cn/api/anthropic"  # 示例：GLM API
-model = "glm-4.7"  # 示例：GLM-4.7，可替换为其他模型
+api_token = "your-api-token"  # 必填：API Token
+base_url = "https://open.bigmodel.cn/api/anthropic"  # API 地址
+model = "glm-4.7"  # 模型名称
 
 # 可选：额外环境变量
 [coder.env]
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
-'''
 
-    raise ConfigError(
-        f"未找到 Coder 配置！\n\n"
-        f"Coder 工具需要用户自行配置后端模型。\n"
-        f"推荐使用 GLM-4.7 作为参考案例，也可选用其他支持 Claude Code API 的模型（如 Minimax、DeepSeek 等）。\n\n"
-        f"请创建配置文件：{config_path}\n\n"
-        f"配置文件示例：\n{config_example}\n"
-        f"或设置环境变量 CODER_API_TOKEN"
-    )
+# ============================================================================
+# Gemini CLI 相关代理模型配置
+# ============================================================================
+[gemini]
+model = "gemini-3-pro"  # Gemini 默认模型
+
+[frontend]
+model = "gemini-3-pro"  # Frontend 前端/UI 代理
+
+[librarian]
+model = "gemini-3-flash"  # Librarian 研究代理（快速、低成本）
+
+[looker]
+model = "gemini-3-flash"  # Looker 多模态代理（快速、低成本）
+
+# ============================================================================
+# OpenCode 相关代理配置
+# ============================================================================
+[chore]
+model = "anthropic/claude-sonnet-4-20250514"  # Chore 杂务代理
+'''
 
 
 def build_coder_env(config: dict[str, Any]) -> dict[str, str]:
@@ -85,9 +164,15 @@ def build_coder_env(config: dict[str, Any]) -> dict[str, str]:
 
     Returns:
         包含所有环境变量的字典
+
+    Raises:
+        ConfigError: Coder 配置无效时抛出
     """
+    # 验证 Coder 配置
+    validate_coder_config(config)
+    
     coder_config = config.get("coder", {})
-    model = coder_config.get("model", "glm-4.7")
+    model = coder_config.get("model", DEFAULT_MODELS["coder"])
 
     env = os.environ.copy()
 
@@ -111,8 +196,8 @@ def build_coder_env(config: dict[str, Any]) -> dict[str, str]:
     return env
 
 
-def validate_config(config: dict[str, Any]) -> None:
-    """验证配置有效性
+def validate_coder_config(config: dict[str, Any]) -> None:
+    """验证 Coder 配置有效性（仅在使用 Coder 时调用）
 
     Args:
         config: 配置字典
@@ -123,7 +208,12 @@ def validate_config(config: dict[str, Any]) -> None:
     coder_config = config.get("coder", {})
 
     if not coder_config.get("api_token"):
-        raise ConfigError("Coder 配置缺少 api_token")
+        raise ConfigError(
+            f"Coder 工具需要配置 API Token！\n\n"
+            f"请创建配置文件：{get_config_path()}\n\n"
+            f"配置文件示例：\n{get_config_example()}\n"
+            f"或设置环境变量 CODER_API_TOKEN"
+        )
 
     if not coder_config.get("base_url"):
         raise ConfigError("Coder 配置缺少 base_url")
@@ -136,7 +226,7 @@ _config_cache: dict[str, Any] | None = None
 def get_config() -> dict[str, Any]:
     """获取配置（带缓存）
 
-    首次调用时加载配置并验证，后续调用直接返回缓存
+    首次调用时加载配置，后续调用直接返回缓存
 
     Returns:
         配置字典
@@ -145,7 +235,6 @@ def get_config() -> dict[str, Any]:
 
     if _config_cache is None:
         _config_cache = load_config()
-        validate_config(_config_cache)
 
     return _config_cache
 

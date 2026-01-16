@@ -536,8 +536,11 @@ async def looker_tool(
     else:
         cmd.append("--yolo")
 
-    # 使用 gemini-3-flash 模型（擅长多模态）
-    cmd.extend(["--model", "gemini-3-flash"])
+    # 使用配置的模型（默认 gemini-3-flash，擅长多模态）
+    from omcc_mcp.config import get_agent_model
+    model_to_use = get_agent_model("looker")
+    if model_to_use:
+        cmd.extend(["--model", model_to_use])
 
     # 会话恢复
     if SESSION_ID:

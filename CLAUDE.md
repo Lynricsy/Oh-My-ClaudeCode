@@ -140,14 +140,33 @@ Oh-My-ClaudeCode/
 
 ### 配置方案
 
-优先级：`~/.omcc-mcp/config.toml` > 环境变量
+配置文件路径：`~/.omcc-mcp/config.toml`
 
 ```toml
 # ~/.omcc-mcp/config.toml
+
+# Coder 后端配置（claude CLI + 可配置模型）
 [coder]
-api_token = "your-api-token"  # 可配置任意支持 Claude Code API 的模型后端
-base_url = "https://open.bigmodel.cn/api/anthropic"  # 示例：GLM API
-model = "glm-4.7"  # 示例：GLM-4.7，可替换为其他模型
+api_token = "your-api-token"
+base_url = "https://open.bigmodel.cn/api/anthropic"
+model = "glm-4.7"
+
+# Gemini CLI 代理模型配置
+[gemini]
+model = "gemini-3-pro"
+
+[frontend]
+model = "gemini-3-pro"
+
+[librarian]
+model = "gemini-3-flash"
+
+[looker]
+model = "gemini-3-flash"
+
+# OpenCode 代理配置
+[chore]
+model = "anthropic/claude-sonnet-4-20250514"
 ```
 
 ### 跨平台实现
