@@ -3,8 +3,22 @@
     "context7": {
       "httpUrl": "https://mcp.context7.com/mcp"
     },
-    "websearch": {
-      "httpUrl": "https://mcp.exa.ai/mcp?tools=web_search_exa"
+    "exa": {
+      "command": "bunx",
+      "args": ["-y", "exa-mcp-server@latest"],
+      "env": {
+        "EXA_API_KEY": "${EXA_API_KEY}"
+      }
+    },
+    "open-websearch": {
+      "command": "bunx",
+      "args": ["-y", "open-websearch@latest"],
+      "env": {}
+    },
+    "Playwright": {
+      "command": "bunx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {}
     },
     "github": {
       "command": "docker",
