@@ -251,22 +251,6 @@ if command -v gemini &> /dev/null; then
     echo ""
     echo -e "${CYAN}  Checking MCP dependencies...${NC}"
 
-    # Check Docker (required for github MCP)
-    DOCKER_AVAILABLE=false
-    if command -v docker &> /dev/null; then
-        # Check if Docker daemon is running
-        if docker info &> /dev/null; then
-            DOCKER_AVAILABLE=true
-            write_success "Docker is installed and running (required for github MCP)"
-        else
-            write_warning "Docker is installed but not running"
-            write_warning "Start Docker to enable github MCP: sudo systemctl start docker"
-        fi
-    else
-        write_warning "Docker not installed (required for github MCP)"
-        write_warning "Install Docker: https://docs.docker.com/get-docker/"
-    fi
-
     # Check npm/npx (required for firecrawl MCP)
     NPM_AVAILABLE=false
     if command -v npx &> /dev/null; then
@@ -287,6 +271,8 @@ if command -v gemini &> /dev/null; then
     echo -e "${YELLOW}GitHub Personal Access Token (for github MCP)${NC}"
     echo "============================================================"
     echo ""
+    echo "GitHub MCP now uses GitHub Copilot API (no Docker required!)"
+    echo ""
     echo "How to get your token:"
     echo "  1. Go to: https://github.com/settings/tokens"
     echo "  2. Click 'Generate new token' -> 'Generate new token (classic)'"
@@ -296,18 +282,8 @@ if command -v gemini &> /dev/null; then
     echo ""
     echo -e "     ${GREEN}Required scopes:${NC}"
     echo "     [x] repo              - Full control of private repositories"
-    echo "         [x] repo:status   - Access commit status"
-    echo "         [x] repo_deployment - Access deployment status"
-    echo "         [x] public_repo   - Access public repositories"
-    echo "         [x] repo:invite   - Access repository invitations"
     echo "     [x] read:org          - Read org and team membership"
     echo "     [x] read:user         - Read user profile data"
-    echo "     [x] user:email        - Access user email addresses"
-    echo ""
-    echo -e "     ${YELLOW}Optional scopes (for full functionality):${NC}"
-    echo "     [x] gist              - Create and manage gists"
-    echo "     [x] read:project      - Read projects"
-    echo "     [x] read:discussion   - Read discussions"
     echo ""
     echo "  6. Click 'Generate token' and copy the token immediately"
     echo "     (You won't be able to see it again!)"

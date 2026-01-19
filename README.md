@@ -38,7 +38,7 @@
 | 🧠 **专家顾问** | `gemini` | Gemini CLI | 架构设计、第二意见 |
 | 🎨 **前端专家** | `frontend` | Gemini CLI | 界面设计、样式、动效 |
 | 🔧 **杂务执行** | `chore` | OpenCode CLI | 批量重命名、格式化等 |
-| 📚 **代码搜索** | `librarian` | Gemini CLI | 代码库搜索与理解 |
+| 📚 **网络研究** | `librarian` | Gemini CLI | 文档查询 + 网络搜索 + GitHub 搜索 |
 | 👁️ **多模态分析** | `looker` | Gemini CLI | PDF、图片、图表分析 |
 
 ### 系统架构
@@ -63,7 +63,7 @@ graph TB
             Frontend[🎨 Frontend<br/>UI/UX 专家]
         end
         subgraph "信息获取"
-            Librarian[📚 Librarian<br/>代码搜索]
+            Librarian[📚 Librarian<br/>网络研究]
             Looker[👁️ Looker<br/>多模态分析]
         end
     end
@@ -77,13 +77,13 @@ graph TB
     Claude -->|杂务任务| Chore
     Claude -->|技术咨询| Gemini
     Claude -->|前端任务| Frontend
-    Claude -->|代码搜索| Librarian
+    Claude -->|网络研究| Librarian
     Claude -->|文件分析| Looker
     Coder -->|执行结果| Claude
     Chore -->|执行结果| Claude
     Gemini -->|专家意见| Claude
     Frontend -->|前端方案| Claude
-    Librarian -->|搜索结果| Claude
+    Librarian -->|研究结果| Claude
     Looker -->|分析报告| Claude
     Claude -->|代码审核| Codex
     Codex -->|审核意见| Claude
@@ -277,21 +277,29 @@ claude mcp remove omcc -s user
 
 **适用场景**: 批量重命名、全局替换、格式化、依赖更新
 
-### `librarian` - 代码搜索专家
+### `librarian` - 网络研究专家
 
-调用 Gemini CLI 进行代码库搜索与理解。
+调用 Gemini CLI 进行网络研究（文档查询、网络搜索、GitHub 搜索等）。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
-| `PROMPT` | string | ✅ | - | 搜索或理解任务 |
-| `cd` | Path | ✅ | - | 代码库根目录 |
+| `PROMPT` | string | ✅ | - | 网络研究任务描述 |
+| `cd` | Path | ✅ | - | 工作目录 |
 | `sandbox` | string | | `read-only` | 沙箱策略（只读） |
 | `SESSION_ID` | string | | `""` | 会话 ID |
 | `timeout` | int | | `120` | 空闲超时（秒） |
 | `max_duration` | int | | `600` | 总时长上限（秒） |
 | `max_retries` | int | | `1` | 最大重试次数 |
 
-**注意**: 仅搜索本地代码库，不执行网络搜索
+**研究能力**（通过 Gemini CLI 配置的 MCP）：
+- `context7`: 官方文档查询
+- `exa`: 网络搜索
+- `open-websearch`: 免费备选搜索（DuckDuckGo/Bing/Brave）
+- `Playwright`: 浏览器自动化（JS 渲染页面）
+- `github`: GitHub 代码/Issues/PRs 搜索
+- `firecrawl`: 网页内容抓取
+
+**注意**: 本地代码搜索请使用 Claude 的 Explore 代理
 
 ### `looker` - 多模态分析专家
 

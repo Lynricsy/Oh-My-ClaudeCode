@@ -35,7 +35,7 @@ description: |
 | cd | - | 工作目录（必填） |
 | sandbox | workspace-write | 沙箱策略 |
 | timeout | 180 | 空闲超时（秒） |
-| max_duration | 3600 | 总时长上限（秒） |
+| max_duration | 1200 | 总时长上限（秒） |
 | max_retries | 1 | 自动重试次数 |
 
 ## 设计流程

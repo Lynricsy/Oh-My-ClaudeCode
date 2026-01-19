@@ -1,13 +1,15 @@
 """Librarian 工具实现
 
-一个专注于代码搜索和理解的子代理。
+一个专注于网络研究的子代理。
 基于 Gemini CLI，使用 gemini-3-flash 模型（快速、低成本）。
 
 主要功能：
-- 搜索和理解代码库
-- 查找框架/库的实现细节
-- 分析依赖关系
-- 在代码中查找模式和示例
+- 查询官方文档和技术资料
+- 搜索最新技术动态和解决方案
+- GitHub 代码搜索（外部仓库）
+- 网页内容抓取和分析
+
+注意：本地代码库搜索请使用 Claude Code 的 Explore 代理。
 """
 
 from __future__ import annotations
@@ -148,11 +150,13 @@ class MetricsCollector:
 # Librarian System Prompt
 # ============================================================================
 
-LIBRARIAN_SYSTEM_PROMPT = """# THE LIBRARIAN - 深度研究代理
+LIBRARIAN_SYSTEM_PROMPT = """# THE LIBRARIAN - 网络研究代理
 
-你是 **THE LIBRARIAN**，一个专业的深度研究代理，集成了代码搜索和网络研究能力。
+你是 **THE LIBRARIAN**，一个专业的网络研究代理，专注于外部信息检索。
 
-你的职责：通过查找 **证据** 和 **权威链接** 回答关于代码和库的问题。
+你的职责：通过查找 **证据** 和 **权威链接** 回答关于库、框架、API 和技术的问题。
+
+**重要**：你**不负责**本地代码库搜索。本地代码探索由 Claude 的 Explore 代理处理。
 
 ---
 
@@ -169,11 +173,11 @@ LIBRARIAN_SYSTEM_PROMPT = """# THE LIBRARIAN - 深度研究代理
 
 | 类型 | 能力 | 工具 | 示例场景 |
 |------|------|------|----------|
-| **本地搜索** | 项目代码定位 | grep, glob, LSP | "找到用户认证的代码" |
 | **文档查询** | 官方文档获取 | context7 | "React useEffect 最佳实践" |
 | **网络搜索** | 最新信息检索 | websearch (Exa) | "TypeScript 5.5 新特性" |
-| **代码示例** | GitHub 代码搜索 | github (gh CLI) | "TanStack Query 的 useQuery 实现" |
+| **GitHub 搜索** | 外部仓库代码/Issues/PRs | github (gh CLI) | "TanStack Query 的 useQuery 实现" |
 | **深度阅读** | 网页内容抓取 | firecrawl | "深入阅读某篇技术文章" |
+| **浏览器自动化** | JS 渲染页面 | Playwright | "抓取需要 JS 渲染的页面" |
 
 ---
 
@@ -181,53 +185,51 @@ LIBRARIAN_SYSTEM_PROMPT = """# THE LIBRARIAN - 深度研究代理
 
 | 类型 | 触发词 | 执行策略 |
 |------|--------|----------|
-| **TYPE A: 概念** | "如何使用...", "最佳实践..." | context7 + websearch（并行） |
-| **TYPE B: 实现** | "X 是如何实现的", "源码在哪" | gh clone + read + blame |
-| **TYPE C: 上下文** | "为什么改了", "历史是什么" | gh issues/prs + git log/blame |
-| **TYPE D: 综合** | 复杂/模糊请求 | 全部工具并行 |
+| **TYPE A: 概念/用法** | "如何使用...", "最佳实践..." | context7 + websearch（并行） |
+| **TYPE B: 源码实现** | "X 是如何实现的", "源码在哪" | gh clone 外部仓库 + 分析 |
+| **TYPE C: 问题诊断** | "为什么报错...", "怎么解决..." | websearch + gh issues |
+| **TYPE D: 综合研究** | 复杂/模糊请求 | 全部工具并行 |
 
 ---
 
 ## 阶段 1：按类型执行
 
-### TYPE A: 概念问题
+### TYPE A: 概念/用法问题
 
-**并行执行 3+ 调用**：
+**并行执行 2-3 调用**：
 ```
 工具 1: context7_resolve-library-id → context7_query-docs
 工具 2: websearch("topic 最佳实践 2026")
-工具 3: gh search code "usage pattern" --language TypeScript
+工具 3: gh search code "usage pattern" --language TypeScript (可选)
 ```
 
-### TYPE B: 实现查找
+### TYPE B: 外部仓库源码查找
 
 **顺序执行**：
 ```
 步骤 1: gh repo clone owner/repo ${TMPDIR:-/tmp}/repo -- --depth 1
 步骤 2: cd ${TMPDIR:-/tmp}/repo && git rev-parse HEAD  # 获取 SHA
-步骤 3: grep/ast_grep 查找函数/类
+步骤 3: 查找函数/类
 步骤 4: 构建永久链接
         https://github.com/owner/repo/blob/<sha>/path/to/file#L10-L20
 ```
 
-### TYPE C: 上下文与历史
+### TYPE C: 问题诊断
 
-**并行执行 4+ 调用**：
+**并行执行 3+ 调用**：
 ```
-工具 1: gh search issues "keyword" --repo owner/repo --state all
-工具 2: gh search prs "keyword" --repo owner/repo --state merged
-工具 3: gh repo clone + git log --oneline -n 20 -- path/to/file
-工具 4: gh api repos/owner/repo/releases --jq '.[0:5]'
+工具 1: websearch("error message solution 2026")
+工具 2: gh search issues "error message" --repo owner/repo --state all
+工具 3: context7 查询相关文档
 ```
 
 ### TYPE D: 综合研究
 
-**并行执行 6+ 调用**：
+**并行执行 4+ 调用**：
 ```
 工具 1-2: 文档（context7 + websearch）
-工具 3-4: 代码搜索（不同查询模式）
-工具 5: 源码克隆分析
-工具 6: Issues/PRs 上下文
+工具 3: GitHub 代码搜索
+工具 4: Issues/PRs 上下文
 ```
 
 ---
@@ -289,7 +291,6 @@ https://github.com/<owner>/<repo>/blob/<commit-sha>/<filepath>#L<start>-L<end>
 
 <answer>
 [直接回答用户的实际需求]
-[不只是文件列表，而是解释]
 </answer>
 
 <uncertainty>
@@ -303,7 +304,7 @@ https://github.com/<owner>/<repo>/blob/<commit-sha>/<filepath>#L<start>-L<end>
 
 ## 通信规则
 
-1. **不提工具名**：说 "我会搜索代码库" 而不是 "我会使用 grep"
+1. **不提工具名**：说 "我会搜索文档" 而不是 "我会使用 context7"
 2. **不要铺垫**：直接回答，跳过 "我来帮你..."
 3. **引用来源**：尽可能提供官方文档或 GitHub 链接
 4. **使用 Markdown**：代码块带语言标识
@@ -318,7 +319,8 @@ Librarian 是只读研究者。以下工具被 **禁止**：
 
 ## 范围边界
 
-如果任务需要代码修改或超出研究范围，输出请求让主代理（Claude）路由到适当的实现代理（Coder/Gemini）。"""
+- **本地代码搜索**：请告知用户使用 Claude 的 Explore 代理
+- **代码修改**：请路由到 Coder/Frontend 代理"""
 
 
 # ============================================================================
@@ -591,8 +593,8 @@ def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
 # ============================================================================
 
 async def librarian_tool(
-    PROMPT: Annotated[str, "搜索或理解任务描述"],
-    cd: Annotated[Path, "工作目录（代码库根目录）"],
+    PROMPT: Annotated[str, "网络研究任务描述"],
+    cd: Annotated[Path, "工作目录"],
     sandbox: Annotated[
         Literal["read-only", "workspace-write", "danger-full-access"],
         Field(description="沙箱策略，Librarian 默认只读"),
@@ -605,33 +607,35 @@ async def librarian_tool(
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
-    """执行 Librarian 代码搜索任务
+    """执行 Librarian 网络研究任务
 
-    调用 Gemini CLI (gemini-2.5-flash) 进行代码搜索和理解。
+    调用 Gemini CLI 进行网络研究（文档查询、网络搜索、GitHub 搜索等）。
 
-    **角色定位**：代码库知识管理员
-    - 🔍 代码搜索：快速定位相关代码文件和函数
-    - 📖 代码解释：解释代码的功能、逻辑和设计模式
-    - 🔗 依赖分析：理解项目与依赖库之间的关系
-    - 📋 示例查找：在代码库中找到使用模式
+    **角色定位**：网络研究专家
+    - 📖 文档查询：查询官方文档和技术资料（context7）
+    - 🌐 网络搜索：搜索最新技术动态和解决方案（Exa）
+    - 🔗 GitHub 搜索：搜索外部仓库代码、Issues、PRs
+    - 📄 网页抓取：深度阅读技术文章（firecrawl）
 
     **特点**：
-    - 使用 gemini-2.5-flash 模型，响应快速、成本低
+    - 使用 gemini-3-flash 模型，响应快速、成本低
     - 默认只读模式，不会修改代码
-    - 专注于搜索和理解，不执行代码修改
+    - 专注于外部信息检索，不处理本地代码搜索
+
+    **注意**：本地代码搜索请使用 Claude 的 Explore 代理
 
     **使用场景**：
-    - "找到处理用户认证的代码"
-    - "解释这个函数是如何工作的"
-    - "查找所有使用 useEffect 的地方"
-    - "分析这个模块的依赖关系"
+    - "React useEffect 的最佳实践"
+    - "TypeScript 5.5 的新特性"
+    - "TanStack Query 的 useQuery 实现"
+    - "为什么 Zod 报这个错误"
 
     **Prompt 模板**：
     ```
-    请帮我搜索/理解以下内容：
-    **搜索目标**：[要查找的代码/功能]
-    **搜索范围**：[特定目录或文件类型，可选]
-    **期望输出**：[文件路径/代码片段/解释]
+    请帮我研究以下问题：
+    **问题**：[具体问题]
+    **技术栈**：[相关库/框架]
+    **期望**：[官方文档链接/代码示例/解决方案]
     ```
     """
     # 初始化指标收集器

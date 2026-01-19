@@ -15,7 +15,7 @@ description: |
 - **Codex**：审核者 + 高级代码顾问
 - **Gemini**：高阶顾问（架构设计、第二意见）→ 详见 `/gemini-collaboration`
 - **Frontend**：**前端/UI 专家**（界面设计、样式、动效）
-- **Librarian**：深度研究专家（代码搜索 + 网络研究 + 文档查询）
+- **Librarian**：网络研究专家（文档查询 + 网络搜索 + GitHub 搜索）
 - **Looker**：多模态分析专家（PDF/图片/图表分析）
 
 ## 任务拆分原则（分发给 Coder）
@@ -28,25 +28,27 @@ description: |
 
 ## 核心流程
 
-### 0. 探索：Librarian 搜索代码（可选）
+### 0. 网络研究：Librarian 查询外部资料（可选）
 
-任务开始前，如果需要了解代码库结构：
-- **调用 Librarian** 搜索相关代码位置
-- 获取文件路径、函数定义、依赖关系
-- 将搜索结果作为上下文传递给 Coder
+任务开始前，如果需要查询外部文档或最新信息：
+- **调用 Librarian** 查询官方文档、网络搜索、GitHub 代码
+- 获取最佳实践、解决方案、外部代码示例
+- 将研究结果作为上下文传递给 Coder
 
 ```
-Librarian(PROMPT="找到用户认证相关的代码", cd=".")
-→ 返回文件列表和代码解释
+Librarian(PROMPT="React useEffect 的最佳实践", cd=".")
+→ 返回官方文档链接和代码示例
 → 将结果作为上下文传给 Coder
 ```
+
+**注意**：本地代码搜索请使用 Claude 的 **Explore 代理**
 
 ### 1. 执行：Coder 处理所有改动
 
 所有代码、文档等内容改动任务，**直接委托 Coder 执行**。
 
 调用前（复杂任务推荐）：
-- **调用 Librarian 搜索**相关代码位置
+- **调用 Librarian** 查询外部文档和最佳实践
 - 在 PROMPT 中列出修改清单
 - **复杂问题可先与 Codex 沟通**：架构设计或复杂方案可先咨询后再委托 Coder 执行
 
@@ -70,28 +72,30 @@ Coder 执行完毕后，Claude 快速读取验收：
 | Codex | 代码审核 | read-only | OpenAI Codex | 默认 1 次 |
 | Gemini | 顾问/执行 | workspace-write (yolo) | gemini-3-pro | 默认 1 次 |
 | **Frontend** | **前端/UI** | workspace-write | gemini-3-pro | 默认 1 次 |
-| Librarian | 深度研究 | read-only | gemini-3-flash | 默认 1 次 |
+| Librarian | 网络研究 | read-only | gemini-3-flash | 默认 1 次 |
 | Looker | 多模态分析 | read-only | gemini-3-flash | 默认 1 次 |
 
-### Librarian 深度研究能力
+### Librarian 网络研究能力
 
-Librarian 通过 Gemini CLI 配置的 MCP 提供全方位研究能力：
+Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 
 | MCP | 功能 | 示例场景 |
 |-----|------|----------|
 | **context7** | 官方文档查询 | "React useEffect 最佳实践" |
-| **exa** | 主力网络搜索 | "最新的 TypeScript 5.5 特性" |
+| **exa** | 网络搜索 | "TypeScript 5.5 新特性" |
 | **open-websearch** | 免费备选搜索 | "DuckDuckGo 搜索某个问题" |
 | **Playwright** | 浏览器自动化 | "抓取需要 JS 渲染的页面" |
-| **github** | GitHub 代码搜索 | "TanStack Query 的 useQuery 实现" |
+| **github** | GitHub 搜索 | "TanStack Query 的 useQuery 实现" |
 | **firecrawl** | 网页抓取 | "深入阅读某篇技术文章" |
 
 | 请求类型 | 触发词 | 示例 |
 |----------|--------|------|
-| **TYPE A** | "如何使用...", "最佳实践..." | 概念问题 |
-| **TYPE B** | "X 在哪实现", "源码位置" | 实现查找 |
+| **TYPE A** | "如何使用...", "最佳实践..." | 概念/用法问题 |
+| **TYPE B** | "X 是如何实现的" | 外部源码查找 |
 | **TYPE C** | "为什么报错...", "怎么解决..." | 问题诊断 |
 | **TYPE D** | 复杂/模糊请求 | 综合研究 |
+
+**注意**：本地代码搜索请使用 Claude 的 **Explore 代理**
 
 ### Looker 多模态分析
 

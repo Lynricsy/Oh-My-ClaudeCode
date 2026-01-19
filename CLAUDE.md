@@ -24,7 +24,7 @@ Codex (OpenAI)    →  独立代码审核者（质量把关）
 Gemini (可选)     →  多面手专家（架构设计、第二意见）
 Frontend (Gemini 3 Pro) → 前端/UI 专家（界面设计、样式、动效）
 Chore (OpenCode)  →  杂务执行者（简单重复任务、批量操作）
-Librarian (Gemini 3 Flash) → 深度研究专家（代码搜索 + 网络研究 + 文档查询）
+Librarian (Gemini 3 Flash) → 网络研究专家（文档查询 + 网络搜索 + GitHub 搜索）
 Looker (Gemini 3 Flash) → 多模态分析专家（PDF/图片/图表分析）
 ```
 
@@ -47,6 +47,8 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 - "为什么 Zod 报这个错误" → exa + github issues
 - "抓取某网页的完整内容" → Playwright / firecrawl
 
+**注意**：本地代码搜索请使用 Claude 的 Explore 代理
+
 ## 项目结构
 
 ```
@@ -62,14 +64,14 @@ Oh-My-ClaudeCode/
 │       ├── gemini.py         # Gemini 工具
 │       ├── frontend.py       # Frontend 工具（前端/UI）
 │       ├── chore.py          # Chore 工具（杂务执行）
-│       ├── librarian.py      # Librarian 工具（深度研究）
+│       ├── librarian.py      # Librarian 工具（网络研究）
 │       └── looker.py         # Looker 工具（多模态分析）
 ├── skills/                   # Skills 工作流指导
 │   ├── omcc-workflow/        # OMCC 协作流程（Coder/Codex）
 │   ├── gemini-collaboration/ # Gemini 协作指南
 │   ├── frontend/             # Frontend 前端/UI 指南
 │   ├── chore/                # Chore 杂务执行指南
-│   ├── librarian/            # Librarian 深度研究指南
+│   ├── librarian/            # Librarian 网络研究指南
 │   └── looker/               # Looker 多模态分析指南
 ├── templates/                # 模板文件
 │   └── omcc-global-prompt.md # 全局 CLAUDE.md 模板
@@ -106,7 +108,7 @@ Oh-My-ClaudeCode/
 | `gemini` | 专家咨询/执行 | gemini-3-pro | workspace-write |
 | `frontend` | 前端/UI 开发 | gemini-3-pro | workspace-write |
 | `chore` | 杂务执行（批量操作） | OpenCode CLI | workspace-write |
-| `librarian` | 深度研究（代码+网络+文档） | gemini-3-flash | read-only |
+| `librarian` | 网络研究（文档+搜索+GitHub） | gemini-3-flash | read-only |
 | `looker` | 多模态分析（PDF/图片） | gemini-3-flash | read-only |
 
 ### 核心特性

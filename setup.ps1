@@ -462,7 +462,6 @@ if ($DryRun) {
             }
         }
 
-        Write-DryRun "Would check Docker availability for github MCP"
         Write-DryRun "Would check npx availability for firecrawl MCP"
         Write-DryRun "Would prompt for: GITHUB_PERSONAL_ACCESS_TOKEN, FIRECRAWL_API_KEY"
         Write-DryRun "Would create env file: $geminiEnvPath"
@@ -514,24 +513,6 @@ if ($DryRun) {
             Write-Host ""
             Write-Host "  Checking MCP dependencies..." -ForegroundColor Cyan
 
-            # Check Docker (required for github MCP)
-            $dockerAvailable = $false
-            try {
-                $null = Get-Command docker -ErrorAction Stop
-                # Check if Docker daemon is running
-                $dockerInfo = docker info 2>&1
-                if ($LASTEXITCODE -eq 0) {
-                    $dockerAvailable = $true
-                    Write-Success "Docker is installed and running (required for github MCP)"
-                } else {
-                    Write-WarningMsg "Docker is installed but not running"
-                    Write-WarningMsg "Start Docker Desktop to enable github MCP"
-                }
-            } catch {
-                Write-WarningMsg "Docker not installed (required for github MCP)"
-                Write-WarningMsg "Install Docker: https://docs.docker.com/get-docker/"
-            }
-
             # Check npm/npx (required for firecrawl MCP)
             $npxAvailable = $false
             try {
@@ -553,6 +534,8 @@ if ($DryRun) {
             Write-Host "GitHub Personal Access Token (for github MCP)" -ForegroundColor Yellow
             Write-Host "============================================================" -ForegroundColor White
             Write-Host ""
+            Write-Host "GitHub MCP now uses GitHub Copilot API (no Docker required!)"
+            Write-Host ""
             Write-Host "How to get your token:"
             Write-Host "  1. Go to: https://github.com/settings/tokens"
             Write-Host "  2. Click 'Generate new token' -> 'Generate new token (classic)'"
@@ -562,18 +545,8 @@ if ($DryRun) {
             Write-Host ""
             Write-Host "     Required scopes:" -ForegroundColor Green
             Write-Host "     [x] repo              - Full control of private repositories"
-            Write-Host "         [x] repo:status   - Access commit status"
-            Write-Host "         [x] repo_deployment - Access deployment status"
-            Write-Host "         [x] public_repo   - Access public repositories"
-            Write-Host "         [x] repo:invite   - Access repository invitations"
             Write-Host "     [x] read:org          - Read org and team membership"
             Write-Host "     [x] read:user         - Read user profile data"
-            Write-Host "     [x] user:email        - Access user email addresses"
-            Write-Host ""
-            Write-Host "     Optional scopes (for full functionality):" -ForegroundColor Yellow
-            Write-Host "     [x] gist              - Create and manage gists"
-            Write-Host "     [x] read:project      - Read projects"
-            Write-Host "     [x] read:discussion   - Read discussions"
             Write-Host ""
             Write-Host "  6. Click 'Generate token' and copy the token immediately"
             Write-Host "     (You won't be able to see it again!)"
