@@ -42,8 +42,8 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 
 使用场景：
 - "React useEffect 的最佳实践" → context7 + exa
-- "找到 TanStack Query 的 useQuery 实现" → github
-- "为什么 Zod 报这个错误" → exa + github issues
+- "找到 TanStack Query 的 useQuery 实现" → grep.app
+- "为什么 Zod 报这个错误" → exa + grep.app
 - "抓取某网页的完整内容" → Playwright / firecrawl
 
 **注意**：本地代码搜索请使用 Claude 的 Explore 代理
