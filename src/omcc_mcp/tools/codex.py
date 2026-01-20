@@ -649,14 +649,6 @@ async def codex_tool(
         str,
         "从 ~/.codex/config.toml 加载的配置文件名称",
     ] = "",
-    timeout: Annotated[
-        int,
-        Field(description="空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"),
-    ] = 300,
-    max_duration: Annotated[
-        int,
-        Field(description="总时长硬上限（秒），默认 7200 秒（2 小时），0 表示无限制"),
-    ] = 7200,
     max_retries: Annotated[int, "最大重试次数，默认 1（Codex 只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -700,6 +692,10 @@ async def codex_tool(
         cmd.extend(["resume", str(SESSION_ID)])
 
     # PROMPT 通过 stdin 传递，不再作为命令行参数
+
+    # 超时设置（内部固定，不允许外部修改）
+    timeout = 300  # 空闲超时 5 分钟
+    max_duration = 7200  # 总时长上限 2 小时
 
     # 执行循环（支持重试）
     retries = 0

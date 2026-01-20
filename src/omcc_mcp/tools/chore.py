@@ -214,7 +214,7 @@ def safe_chore_command(
     max_duration: int = 3600,  # 最大 1 小时
     prompt: str = "",
     cwd: Optional[Path] = None,
-) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
+) -> Iterator[tuple[Generator[str, None, None], list[Optional[int]], list[int]]]:
     """安全执行 Chore 命令的上下文管理器（使用 OpenCode CLI）"""
     opencode_path = shutil.which('opencode')
     if not opencode_path:
@@ -278,6 +278,7 @@ def safe_chore_command(
 
         output_queue: queue.Queue[str | None] = queue.Queue()
         raw_output_lines_holder = [0]
+        exit_code_holder: list[Optional[int]] = [None]  # 用于存储 exit_code
         GRACEFUL_SHUTDOWN_DELAY = 0.3
 
         def is_turn_completed(line: str) -> bool:
@@ -309,7 +310,7 @@ def safe_chore_command(
         thread = threading.Thread(target=read_output, daemon=True)
         thread.start()
 
-        def generator() -> Generator[str, None, tuple[Optional[int], int]]:
+        def generator() -> Generator[str, None, None]:
             """生成器：读取输出并处理超时"""
             nonlocal thread
             start_time = time.time()
@@ -369,6 +370,9 @@ def safe_chore_command(
             if timeout_error is not None:
                 raise timeout_error
 
+            # 将 exit_code 存储到 holder 中，避免 StopIteration 问题
+            exit_code_holder[0] = exit_code
+
             while not output_queue.empty():
                 try:
                     line = output_queue.get_nowait()
@@ -377,9 +381,8 @@ def safe_chore_command(
                 except queue.Empty:
                     break
 
-            return (exit_code, raw_output_lines_holder[0])
-
-        yield generator()
+        # 返回 (generator, exit_code_holder, raw_output_lines_holder)
+        yield generator(), exit_code_holder, raw_output_lines_holder
 
     except Exception:
         cleanup()
@@ -533,58 +536,64 @@ async def chore_tool(
         last_lines: list[str] = []
 
         try:
-            with safe_chore_command(cmd, timeout=timeout, max_duration=max_duration, prompt="", cwd=cd) as gen:
-                try:
-                    for line in gen:
-                        last_lines.append(line)
-                        if len(last_lines) > 50:
-                            last_lines.pop(0)
+            with safe_chore_command(cmd, timeout=timeout, max_duration=max_duration, prompt="", cwd=cd) as (gen, exit_code_holder, raw_lines_holder):
+                for line in gen:
+                    last_lines.append(line)
+                    if len(last_lines) > 50:
+                        last_lines.pop(0)
 
-                        try:
-                            line_dict = json.loads(line.strip())
-                            event_type = line_dict.get("type", "")
+                    try:
+                        line_dict = json.loads(line.strip())
+                        event_type = line_dict.get("type", "")
 
-                            if return_all_messages:
-                                all_messages.append(line_dict)
+                        if return_all_messages:
+                            all_messages.append(line_dict)
 
-                            if event_type == "message":
-                                role = line_dict.get("role", "")
-                                content = line_dict.get("content", "")
-                                if role == "assistant" and content:
-                                    agent_messages += content
+                        if event_type == "message":
+                            role = line_dict.get("role", "")
+                            content = line_dict.get("content", "")
+                            if role == "assistant" and content:
+                                agent_messages += content
 
-                            if event_type == "result":
-                                response = line_dict.get("response", "")
-                                if response and not agent_messages:
-                                    agent_messages = response
+                        # 提取 text 事件 (OpenCode 格式)
+                        if event_type == "text":
+                            part = line_dict.get("part", {})
+                            text_content = part.get("text", "")
+                            if text_content:
+                                agent_messages += text_content
 
-                            if event_type == "init":
-                                if line_dict.get("session_id") is not None:
-                                    session_id = line_dict.get("session_id")
-                                if line_dict.get("thread_id") is not None:
-                                    session_id = line_dict.get("thread_id")
+                        if event_type == "result":
+                            response = line_dict.get("response", "")
+                            if response and not agent_messages:
+                                agent_messages = response
 
-                            if event_type == "error":
-                                had_error = True
-                                error_msg = line_dict.get("message", str(line_dict))
-                                err_message += "\n\n[chore error] " + error_msg
-                                if _is_auth_error(error_msg):
-                                    error_kind = ErrorKind.AUTH_REQUIRED
-                                elif error_kind != ErrorKind.AUTH_REQUIRED:
-                                    error_kind = ErrorKind.UPSTREAM_ERROR
+                        if event_type == "init":
+                            if line_dict.get("session_id") is not None:
+                                session_id = line_dict.get("session_id")
+                            if line_dict.get("thread_id") is not None:
+                                session_id = line_dict.get("thread_id")
 
-                        except json.JSONDecodeError:
-                            json_decode_errors += 1
-                            continue
-
-                        except Exception as error:
-                            err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        if event_type == "error":
                             had_error = True
-                            error_kind = ErrorKind.UNEXPECTED_EXCEPTION
-                            break
-                except StopIteration as e:
-                    if isinstance(e.value, tuple) and len(e.value) == 2:
-                        exit_code, raw_output_lines = e.value
+                            error_msg = line_dict.get("message", str(line_dict))
+                            err_message += "\n\n[chore error] " + error_msg
+                            if _is_auth_error(error_msg):
+                                error_kind = ErrorKind.AUTH_REQUIRED
+                            elif error_kind != ErrorKind.AUTH_REQUIRED:
+                                error_kind = ErrorKind.UPSTREAM_ERROR
+
+                    except json.JSONDecodeError:
+                        json_decode_errors += 1
+                        continue
+
+                    except Exception as error:
+                        err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        had_error = True
+                        error_kind = ErrorKind.UNEXPECTED_EXCEPTION
+                        break
+                # for 循环结束后，从 holder 中获取 exit_code 和 raw_output_lines
+                exit_code = exit_code_holder[0]
+                raw_output_lines = raw_lines_holder[0]
 
         except CommandNotFoundError as e:
             metrics.finish(

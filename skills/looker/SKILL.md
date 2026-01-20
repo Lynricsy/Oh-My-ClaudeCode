@@ -37,7 +37,7 @@ description: |
 | cd | - | 工作目录（必填） |
 | sandbox | read-only | 沙箱策略（只读） |
 | timeout | 120 | 空闲超时（秒） |
-| max_duration | 300 | 总时长上限（秒） |
+| max_duration | 3600 | 总时长上限（秒） |
 | max_retries | 1 | 自动重试次数 |
 
 ## 分析能力

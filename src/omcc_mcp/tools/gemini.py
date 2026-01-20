@@ -1,7 +1,9 @@
 """Gemini 工具实现
 
-调用 Gemini CLI 进行代码执行、技术咨询或代码审核。
+调用 OpenCode CLI 进行代码执行、技术咨询或代码审核。
 Gemini 是多面手，权限灵活，由 Claude 按场景控制。
+
+后端：OpenCode CLI (https://opencode.ai)
 """
 
 from __future__ import annotations
@@ -143,206 +145,30 @@ class MetricsCollector:
 # 命令执行
 # ============================================================================
 
-def run_gemini_command(
-    cmd: list[str],
-    timeout: int = 300,
-    max_duration: int = 3600,
-    prompt: str = "",
-    cwd: Optional[Path] = None,
-) -> Generator[str, None, tuple[Optional[int], int]]:
-    """执行 Gemini 命令并流式返回输出
-
-    Args:
-        cmd: 命令和参数列表
-        timeout: 空闲超时（秒），无输出超过此时间触发超时，默认 300 秒（5 分钟）
-        max_duration: 总时长硬上限（秒），默认 1800 秒（30 分钟），0 表示无限制
-        prompt: 通过 stdin 传递的 prompt 内容
-        cwd: 工作目录
-
-    Yields:
-        输出行
-
-    Returns:
-        (exit_code, raw_output_lines) 元组
-
-    Raises:
-        CommandNotFoundError: gemini CLI 未安装时抛出
-        CommandTimeoutError: 命令执行超时时抛出
-    """
-    gemini_path = shutil.which('gemini')
-    if not gemini_path:
-        raise CommandNotFoundError(
-            "未找到 gemini CLI。请确保已安装 Gemini CLI 并添加到 PATH。\n"
-            "安装指南：https://github.com/google-gemini/gemini-cli"
-        )
-    popen_cmd = cmd.copy()
-    popen_cmd[0] = gemini_path
-
-    process = subprocess.Popen(
-        popen_cmd,
-        shell=False,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True,
-        encoding='utf-8',
-        errors='replace',  # 处理非 UTF-8 字符，避免 UnicodeDecodeError
-        cwd=str(cwd) if cwd else None,
-    )
-
-    # 通过 stdin 传递 prompt，然后关闭 stdin
-    if process.stdin:
-        try:
-            if prompt:
-                process.stdin.write(prompt)
-        except (BrokenPipeError, OSError):
-            # 子进程可能已退出，忽略写入错误
-            pass
-        finally:
-            try:
-                process.stdin.close()
-            except (BrokenPipeError, OSError):
-                pass
-
-    output_queue: queue.Queue[str | None] = queue.Queue()
-    raw_output_lines = 0
-    GRACEFUL_SHUTDOWN_DELAY = 0.3
-
-    def is_turn_completed(line: str) -> bool:
-        """检查是否回合完成"""
-        try:
-            data = json.loads(line)
-            # Gemini CLI 使用 turn.completed 表示回合完成
-            return data.get("type") == "turn.completed"
-        except (json.JSONDecodeError, AttributeError, TypeError):
-            return False
-
-    def read_output() -> None:
-        """在单独线程中读取进程输出"""
-        nonlocal raw_output_lines
-        if process.stdout:
-            for line in iter(process.stdout.readline, ""):
-                stripped = line.strip()
-                # 任意行都入队（触发活动判定），但只计数非空行
-                output_queue.put(stripped)
-                if stripped:
-                    raw_output_lines += 1
-                if is_turn_completed(stripped):
-                    # 等待剩余输出被 drain
-                    time.sleep(GRACEFUL_SHUTDOWN_DELAY)
-                    break
-            process.stdout.close()
-        output_queue.put(None)
-
-    thread = threading.Thread(target=read_output)
-    thread.start()
-
-    # 持续读取输出，带双重超时保障
-    start_time = time.time()
-    last_activity_time = time.time()
-    timeout_error: CommandTimeoutError | None = None
-
-    while True:
-        now = time.time()
-
-        # 检查总时长硬上限（优先级高）
-        if max_duration > 0 and (now - start_time) >= max_duration:
-            timeout_error = CommandTimeoutError(
-                f"gemini 执行超时（总时长超过 {max_duration}s），进程已终止。",
-                is_idle=False
-            )
-            break
-
-        # 检查空闲超时
-        if (now - last_activity_time) >= timeout:
-            timeout_error = CommandTimeoutError(
-                f"gemini 空闲超时（{timeout}s 无输出），进程已终止。",
-                is_idle=True
-            )
-            break
-
-        try:
-            line = output_queue.get(timeout=0.5)
-            if line is None:
-                break
-            # 有输出（包括空行），重置空闲计时器
-            last_activity_time = time.time()
-            if line:  # 非空行才 yield
-                yield line
-        except queue.Empty:
-            if process.poll() is not None and not thread.is_alive():
-                break
-
-    # 如果超时，终止进程
-    if timeout_error is not None:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-        thread.join(timeout=5)
-        raise timeout_error
-
-    exit_code: Optional[int] = None
-    try:
-        exit_code = process.wait(timeout=5)  # 此时进程应已结束，短超时即可
-    except subprocess.TimeoutExpired:
-        process.terminate()
-        try:
-            process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-        # 进程等待超时（罕见情况），视为总时长超时
-        timeout_error = CommandTimeoutError(
-            f"gemini 进程等待超时，进程已终止。",
-            is_idle=False
-        )
-    finally:
-        thread.join(timeout=5)
-
-    if timeout_error is not None:
-        raise timeout_error
-
-    # 读取剩余输出（不再累加 raw_output_lines，避免重复计数）
-    while not output_queue.empty():
-        try:
-            line = output_queue.get_nowait()
-            if line is not None:
-                yield line
-        except queue.Empty:
-            break
-
-    # 返回退出码和原始输出行数
-    return (exit_code, raw_output_lines)
-
-
 @contextmanager
-def safe_gemini_command(
+def safe_opencode_command(
     cmd: list[str],
     timeout: int = 300,
     max_duration: int = 3600,
-    prompt: str = "",
     cwd: Optional[Path] = None,
-) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
-    """安全执行 Gemini 命令的上下文管理器
+) -> Iterator[tuple[Generator[str, None, None], list[Optional[int]], list[int]]]:
+    """安全执行 OpenCode 命令的上下文管理器
 
     确保在任何情况下（包括异常）都能正确清理子进程。
 
     用法:
-        with safe_gemini_command(cmd, timeout, max_duration, prompt, cwd) as gen:
+        with safe_opencode_command(cmd, timeout, max_duration, cwd) as gen:
             for line in gen:
                 process_line(line)
     """
-    gemini_path = shutil.which('gemini')
-    if not gemini_path:
+    opencode_path = shutil.which('opencode')
+    if not opencode_path:
         raise CommandNotFoundError(
-            "未找到 gemini CLI。请确保已安装 Gemini CLI 并添加到 PATH。\n"
-            "安装指南：https://github.com/google-gemini/gemini-cli"
+            "未找到 opencode CLI。请确保已安装 OpenCode CLI 并添加到 PATH。\n"
+            "安装指南：https://opencode.ai/docs/cli/"
         )
     popen_cmd = cmd.copy()
-    popen_cmd[0] = gemini_path
+    popen_cmd[0] = opencode_path
 
     process = subprocess.Popen(
         popen_cmd,
@@ -361,13 +187,19 @@ def safe_gemini_command(
     def cleanup() -> None:
         """清理子进程和线程（best-effort，不抛异常）"""
         nonlocal thread
-        # 1. 先关闭 stdout 以解除读取线程的阻塞
+        # 1. 先关闭 stdin
+        try:
+            if process.stdin and not process.stdin.closed:
+                process.stdin.close()
+        except (OSError, IOError):
+            pass
+        # 2. 关闭 stdout 以解除读取线程的阻塞
         try:
             if process.stdout and not process.stdout.closed:
                 process.stdout.close()
         except (OSError, IOError):
             pass
-        # 2. 终止进程
+        # 3. 终止进程
         try:
             if process.poll() is None:
                 process.terminate()
@@ -381,32 +213,28 @@ def safe_gemini_command(
                         pass  # 极端情况：进程无法终止，放弃
         except (ProcessLookupError, OSError):
             pass  # 进程已退出，忽略
-        # 3. 等待线程结束
+        # 4. 等待线程结束
         if thread is not None and thread.is_alive():
             thread.join(timeout=5)
 
     try:
-        # 通过 stdin 传递 prompt，然后关闭 stdin
+        # 关闭 stdin（opencode run 不需要 stdin 输入）
         if process.stdin:
             try:
-                if prompt:
-                    process.stdin.write(prompt)
+                process.stdin.close()
             except (BrokenPipeError, OSError):
                 pass
-            finally:
-                try:
-                    process.stdin.close()
-                except (BrokenPipeError, OSError):
-                    pass
 
         output_queue: queue.Queue[str | None] = queue.Queue()
         raw_output_lines_holder = [0]
+        exit_code_holder: list[Optional[int]] = [None]  # 用于存储 exit_code
         GRACEFUL_SHUTDOWN_DELAY = 0.3
 
         def is_turn_completed(line: str) -> bool:
             """检查是否回合完成"""
             try:
                 data = json.loads(line)
+                # OpenCode 使用 turn.completed 表示回合完成
                 return data.get("type") == "turn.completed"
             except (json.JSONDecodeError, AttributeError, TypeError):
                 return False
@@ -432,7 +260,7 @@ def safe_gemini_command(
         thread = threading.Thread(target=read_output, daemon=True)
         thread.start()
 
-        def generator() -> Generator[str, None, tuple[Optional[int], int]]:
+        def generator() -> Generator[str, None, None]:
             """生成器：读取输出并处理超时"""
             nonlocal thread
             start_time = time.time()
@@ -444,14 +272,14 @@ def safe_gemini_command(
 
                 if max_duration > 0 and (now - start_time) >= max_duration:
                     timeout_error = CommandTimeoutError(
-                        f"gemini 执行超时（总时长超过 {max_duration}s），进程已终止。",
+                        f"opencode 执行超时（总时长超过 {max_duration}s），进程已终止。",
                         is_idle=False
                     )
                     break
 
                 if (now - last_activity_time) >= timeout:
                     timeout_error = CommandTimeoutError(
-                        f"gemini 空闲超时（{timeout}s 无输出），进程已终止。",
+                        f"opencode 空闲超时（{timeout}s 无输出），进程已终止。",
                         is_idle=True
                     )
                     break
@@ -482,7 +310,7 @@ def safe_gemini_command(
                     process.kill()
                     process.wait()
                 timeout_error = CommandTimeoutError(
-                    f"gemini 进程等待超时，进程已终止。",
+                    f"opencode 进程等待超时，进程已终止。",
                     is_idle=False
                 )
             finally:
@@ -492,6 +320,9 @@ def safe_gemini_command(
             if timeout_error is not None:
                 raise timeout_error
 
+            # 将 exit_code 存储到 holder 中，避免 StopIteration 问题
+            exit_code_holder[0] = exit_code
+
             while not output_queue.empty():
                 try:
                     line = output_queue.get_nowait()
@@ -500,9 +331,8 @@ def safe_gemini_command(
                 except queue.Empty:
                     break
 
-            return (exit_code, raw_output_lines_holder[0])
-
-        yield generator()
+        # 返回 (generator, exit_code_holder, raw_output_lines_holder)
+        yield generator(), exit_code_holder, raw_output_lines_holder
 
     except Exception:
         cleanup()
@@ -514,7 +344,7 @@ def safe_gemini_command(
 def _filter_last_lines(lines: list[str], max_lines: int = 50) -> list[str]:
     """过滤 last_lines，脱敏 tool_result 中的大内容
 
-    Gemini 的 JSONL 格式：tool_result 是独立的事件类型（type == "tool_result"）。
+    OpenCode 的 JSONL 格式：tool_result 是独立的事件类型（type == "tool_result"）。
     这里只脱敏 tool_result 的 content 字段，保留消息结构和所有其他上下文。
     """
     import copy
@@ -597,6 +427,7 @@ def _is_auth_error(text: str) -> bool:
         "login required",
         "sign in",
         "oauth",
+        "api key",
     ]
     return any(keyword in text_lower for keyword in auth_keywords)
 
@@ -604,8 +435,7 @@ def _is_auth_error(text: str) -> bool:
 def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
     """判断错误是否可以重试
 
-    Gemini 默认 yolo 模式，大部分错误都可以安全重试。
-    排除：命令不存在（需要用户干预）、认证错误（需要用户登录）
+    Gemini 默认允许重试，排除：命令不存在（需要用户干预）、认证错误（需要用户配置）
     """
     if error_kind == ErrorKind.COMMAND_NOT_FOUND:
         return False
@@ -626,16 +456,12 @@ async def gemini_tool(
         Literal["read-only", "workspace-write", "danger-full-access"],
         Field(description="沙箱策略，默认允许写工作区"),
     ] = "workspace-write",
-    yolo: Annotated[
-        bool,
-        Field(description="无需审批运行所有命令（跳过沙箱），默认 true"),
-    ] = True,
     SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     model: Annotated[
         str,
-        Field(description="指定模型版本"),
+        Field(description="指定模型版本，格式为 provider/model"),
     ] = "",
     timeout: Annotated[
         int,
@@ -650,7 +476,7 @@ async def gemini_tool(
 ) -> Dict[str, Any]:
     """执行 Gemini 任务
 
-    调用 Gemini CLI 进行代码执行、技术咨询或代码审核。
+    调用 OpenCode CLI 进行代码执行、技术咨询或代码审核。
 
     **角色定位**：多面手（与 Claude、Codex 同等级别的顶级 AI 专家）
     - 🧠 高阶顾问：架构设计、技术选型、复杂方案讨论
@@ -663,34 +489,16 @@ async def gemini_tool(
     - 架构设计和技术讨论
     - 前端/UI 原型开发
 
-    **注意**：Gemini 权限灵活，默认 yolo=true，由 Claude 按场景控制
+    **后端**：OpenCode CLI (https://opencode.ai)
     **重试策略**：默认允许 1 次重试
     """
     # 初始化指标收集器
-    sandbox_str = "yolo" if yolo else sandbox
-    metrics = MetricsCollector(tool="gemini", prompt=PROMPT, sandbox=sandbox_str)
+    metrics = MetricsCollector(tool="gemini", prompt=PROMPT, sandbox=sandbox)
 
-    # 构建命令
-    # gemini CLI 命令格式: gemini [options]
-    # 使用 -y/--yolo 跳过确认，--sandbox 启用沙箱
-    # 参考: https://geminicli.com/docs/cli/headless/
-    cmd = ["gemini"]
-
-    # 添加流式 JSON 输出格式（用于 headless mode）
-    cmd.extend(["--output-format", "stream-json"])
-
-    # 注意：gemini CLI 没有 --dir 参数，使用 --include-directories 或依赖 cwd
-    # 工作目录通过 subprocess 的 cwd 参数设置
-
-    # 设置沙箱模式和审批模式
-    if yolo:
-        # yolo 模式：自动批准所有操作
-        cmd.append("--yolo")
-    else:
-        # 非 yolo 模式：根据 sandbox 设置
-        if sandbox == "read-only":
-            # read-only 需要启用 sandbox
-            cmd.append("--sandbox")
+    # 构建 opencode run 命令
+    # opencode run --format json --model provider/model message
+    cmd = ["opencode", "run"]
+    cmd.extend(["--format", "json"])  # JSON 格式输出
 
     # 指定模型（优先级：参数 > 配置文件 > 默认值）
     from omcc_mcp.config import get_agent_model
@@ -700,9 +508,10 @@ async def gemini_tool(
 
     # 会话恢复
     if SESSION_ID:
-        cmd.extend(["--resume", SESSION_ID])
+        cmd.extend(["--session", SESSION_ID])
 
-    # PROMPT 通过 stdin 传递
+    # 添加 prompt
+    cmd.append(PROMPT)
 
     # 执行循环（支持重试）
     retries = 0
@@ -722,83 +531,77 @@ async def gemini_tool(
         last_lines: list[str] = []
 
         try:
-            with safe_gemini_command(cmd, timeout=timeout, max_duration=max_duration, prompt=PROMPT, cwd=cd) as gen:
-                try:
-                    for line in gen:
-                        last_lines.append(line)
-                        if len(last_lines) > 50:
-                            last_lines.pop(0)
+            with safe_opencode_command(cmd, timeout=timeout, max_duration=max_duration, cwd=cd) as (gen, exit_code_holder, raw_lines_holder):
+                for line in gen:
+                    last_lines.append(line)
+                    if len(last_lines) > 50:
+                        last_lines.pop(0)
 
-                        try:
-                            line_dict = json.loads(line.strip())
+                    try:
+                        line_dict = json.loads(line.strip())
 
-                            # stream-json 事件类型: init, message, tool_use, tool_result, error, result
-                            # 参考: https://geminicli.com/docs/cli/headless/
-                            event_type = line_dict.get("type", "")
+                        # stream-json 事件类型
+                        event_type = line_dict.get("type", "")
 
-                            # 收集消息（脱敏 tool_result 内容）
-                            if return_all_messages:
-                                import copy
-                                safe_dict = copy.deepcopy(line_dict)
-                                # Gemini 的 tool_result 是独立事件类型
-                                if event_type == "tool_result":
-                                    # 脱敏 content 字段
-                                    if "content" in safe_dict:
-                                        safe_dict["content"] = "[truncated]"
-                                all_messages.append(safe_dict)
+                        # 收集消息（脱敏 tool_result 内容）
+                        if return_all_messages:
+                            import copy
+                            safe_dict = copy.deepcopy(line_dict)
+                            if event_type == "tool_result":
+                                if "content" in safe_dict:
+                                    safe_dict["content"] = "[truncated]"
+                            all_messages.append(safe_dict)
 
-                            # 提取 message 事件中的内容
-                            if event_type == "message":
-                                # message 事件包含 role 和 content
-                                role = line_dict.get("role", "")
-                                content = line_dict.get("content", "")
-                                if role == "assistant" and content:
-                                    agent_messages += content
+                        # 提取 message 事件中的内容
+                        if event_type == "message":
+                            role = line_dict.get("role", "")
+                            content = line_dict.get("content", "")
+                            if role == "assistant" and content:
+                                agent_messages += content
 
-                            # 提取 result 事件（最终统计）
-                            if event_type == "result":
-                                # result 事件包含 response 和统计信息
-                                response = line_dict.get("response", "")
-                                if response:
-                                    # 如果 result 中有完整响应，使用它
-                                    if not agent_messages:
-                                        agent_messages = response
+                        # 提取 text 事件 (OpenCode 格式)
+                        if event_type == "text":
+                            part = line_dict.get("part", {})
+                            text_content = part.get("text", "")
+                            if text_content:
+                                agent_messages += text_content
 
-                            # 提取 session_id (Gemini 可能在 init 事件中返回)
-                            if event_type == "init":
-                                if line_dict.get("session_id") is not None:
-                                    session_id = line_dict.get("session_id")
-                                if line_dict.get("thread_id") is not None:
-                                    session_id = line_dict.get("thread_id")
+                        # 提取 result 事件（最终统计）
+                        if event_type == "result":
+                            response = line_dict.get("response", "")
+                            if response:
+                                if not agent_messages:
+                                    agent_messages = response
 
-                            # 错误处理
-                            # 注意：AUTH_REQUIRED 优先级最高，一旦设置不再被覆盖
-                            if event_type == "error":
-                                had_error = True
-                                error_msg = line_dict.get("message", str(line_dict))
-                                err_message += "\n\n[gemini error] " + error_msg
-                                # 检查是否为认证错误（优先级高于 UPSTREAM_ERROR）
-                                if _is_auth_error(error_msg):
-                                    error_kind = ErrorKind.AUTH_REQUIRED
-                                elif error_kind != ErrorKind.AUTH_REQUIRED:
-                                    error_kind = ErrorKind.UPSTREAM_ERROR
+                        # 提取 session_id
+                        if event_type == "init":
+                            if line_dict.get("session_id") is not None:
+                                session_id = line_dict.get("session_id")
+                            if line_dict.get("thread_id") is not None:
+                                session_id = line_dict.get("thread_id")
 
-                        except json.JSONDecodeError:
-                            # JSON 解析失败，记录错误计数
-                            json_decode_errors += 1
-                            # 非 JSON 输出记录到日志但不作为响应内容
-                            # 避免将 CLI 警告/错误文本误认为成功结果
-                            continue
-
-                        except Exception as error:
-                            err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        # 错误处理
+                        if event_type == "error":
                             had_error = True
-                            error_kind = ErrorKind.UNEXPECTED_EXCEPTION
-                            break
-                except StopIteration as e:
-                    # 正确捕获生成器返回值
-                    if isinstance(e.value, tuple) and len(e.value) == 2:
-                        exit_code, raw_output_lines = e.value
+                            error_msg = line_dict.get("message", str(line_dict))
+                            err_message += "\n\n[gemini error] " + error_msg
+                            if _is_auth_error(error_msg):
+                                error_kind = ErrorKind.AUTH_REQUIRED
+                            elif error_kind != ErrorKind.AUTH_REQUIRED:
+                                error_kind = ErrorKind.UPSTREAM_ERROR
+
+                    except json.JSONDecodeError:
+                        json_decode_errors += 1
+                        continue
+
+                    except Exception as error:
+                        err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        had_error = True
+                        error_kind = ErrorKind.UNEXPECTED_EXCEPTION
+                        break
+                # for 循环结束后，从 holder 中获取 exit_code 和 raw_output_lines
+                exit_code = exit_code_holder[0]
+                raw_output_lines = raw_lines_holder[0]
 
         except CommandNotFoundError as e:
             metrics.finish(
@@ -821,12 +624,10 @@ async def gemini_tool(
             return result
 
         except CommandTimeoutError as e:
-            # 根据异常属性区分空闲超时和总时长超时
             error_kind = ErrorKind.IDLE_TIMEOUT if e.is_idle else ErrorKind.TIMEOUT
             had_error = True
             err_message = str(e)
             success = False
-            # 超时可以重试
             if retries < max_retries:
                 all_last_lines = last_lines.copy()
                 last_error = {
@@ -840,7 +641,6 @@ async def gemini_tool(
                 time.sleep(0.5 * (2 ** (retries - 1)))
                 continue
             else:
-                # 已达最大重试次数
                 all_last_lines = last_lines.copy()
                 last_error = {
                     "error_kind": error_kind,
@@ -857,13 +657,6 @@ async def gemini_tool(
         if had_error:
             success = False
 
-        # Gemini 可能不返回 session_id，这不算失败
-        # if session_id is None:
-        #     success = False
-        #     if not error_kind:
-        #         error_kind = ErrorKind.PROTOCOL_MISSING_SESSION
-        #     err_message = "未能获取 SESSION_ID。\n\n" + err_message
-
         if not agent_messages:
             success = False
             if not error_kind:
@@ -878,10 +671,8 @@ async def gemini_tool(
             err_message = f"进程退出码非零：{exit_code}\n\n" + err_message
 
         if success:
-            # 成功，跳出重试循环
             break
         else:
-            # 检查是否可重试
             if _is_retryable_error(error_kind, err_message) and retries < max_retries:
                 all_last_lines = last_lines.copy()
                 last_error = {
@@ -892,10 +683,8 @@ async def gemini_tool(
                     "raw_output_lines": raw_output_lines,
                 }
                 retries += 1
-                # 指数退避
                 time.sleep(0.5 * (2 ** (retries - 1)))
             else:
-                # 不可重试或已达到最大重试次数
                 all_last_lines = last_lines.copy()
                 last_error = {
                     "error_kind": error_kind,
@@ -929,7 +718,6 @@ async def gemini_tool(
             "duration": metrics.format_duration(),
         }
     else:
-        # 使用最后一次失败的错误信息
         if last_error:
             error_kind = last_error["error_kind"]
             err_message = last_error["err_message"]
@@ -938,12 +726,12 @@ async def gemini_tool(
 
         # 如果是认证错误，添加友好提示
         if error_kind == ErrorKind.AUTH_REQUIRED:
-            auth_hint = """请先登录 Gemini CLI。运行以下命令完成认证：
-  gemini
+            auth_hint = """请先配置 OpenCode CLI。
 
-然后在交互界面中选择 "Login with Google" 完成登录。
+1. 运行 opencode 启动交互式配置
+2. 或者在 ~/.config/opencode/opencode.jsonc 中配置 provider 和 API Key
 
-或使用 API Key 认证（设置环境变量 GEMINI_API_KEY）。
+参考文档：https://opencode.ai/docs/config/
 
 """
             err_message = auth_hint + err_message

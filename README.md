@@ -36,11 +36,11 @@
 | 👑 **架构师** | Claude | - | 需求分析、任务拆解、最终决策 |
 | 🔨 **执行者** | `coder` | Claude CLI + 可配置后端 | 代码生成、修改、批量任务 |
 | ⚖️ **审核官** | `codex` | Codex CLI (OpenAI) | 独立代码审核、架构咨询 |
-| 🧠 **专家顾问** | `gemini` | Gemini CLI | 架构设计、第二意见 |
-| 🎨 **前端专家** | `frontend` | Gemini CLI | 界面设计、样式、动效 |
+| 🧠 **专家顾问** | `gemini` | OpenCode CLI | 架构设计、第二意见 |
+| 🎨 **前端专家** | `frontend` | OpenCode CLI | 界面设计、样式、动效 |
 | 🔧 **杂务执行** | `chore` | OpenCode CLI | 批量重命名、格式化等 |
-| 📚 **网络研究** | `librarian` | Gemini CLI | 文档查询 + 网络搜索 + 代码搜索 |
-| 👁️ **多模态分析** | `looker` | Gemini CLI | PDF、图片、图表分析 |
+| 📚 **网络研究** | `librarian` | OpenCode CLI | 文档查询 + 网络搜索 + 代码搜索 |
+| 👁️ **多模态分析** | `looker` | OpenCode CLI | PDF、图片、图表分析 |
 
 ### 系统架构
 
@@ -155,8 +155,7 @@ sequenceDiagram
 | [uv](https://docs.astral.sh/uv/) | - | Python 包管理器 |
 | [Claude Code](https://claude.ai/code) | ≥ v2.0.56 | 主框架 |
 | [Codex CLI](https://developers.openai.com/codex/quickstart) | ≥ v0.61.0 | 代码审核 |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | 可选 | 专家咨询/前端 |
-| [OpenCode](https://opencode.ai) | 可选 | 杂务执行 |
+| [OpenCode](https://opencode.ai) | 推荐 | 专家咨询/前端/网络研究/多模态/杂务 |
 
 ### ⚡ 一键安装
 
@@ -236,22 +235,22 @@ claude mcp remove omcc -s user
 
 ### `gemini` - 多面手专家
 
-调用 Gemini CLI 进行技术咨询或代码执行。
+调用 OpenCode CLI 进行技术咨询或代码执行。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
 | `PROMPT` | string | ✅ | - | 任务指令 |
 | `cd` | Path | ✅ | - | 工作目录 |
 | `sandbox` | string | | `workspace-write` | 沙箱策略 |
-| `yolo` | bool | | `true` | 自动批准操作 |
 | `SESSION_ID` | string | | `""` | 会话 ID |
-| `model` | string | | 配置值 | 指定模型 |
+| `model` | string | | 配置值 | 指定模型（provider/model 格式） |
 | `timeout` | int | | `300` | 空闲超时（秒） |
+| `max_duration` | int | | `3600` | 总时长上限（秒） |
 | `max_retries` | int | | `1` | 最大重试次数 |
 
 ### `frontend` - 前端/UI 专家
 
-调用 Gemini CLI 进行专业前端开发。
+调用 OpenCode CLI 进行专业前端开发。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
@@ -260,7 +259,7 @@ claude mcp remove omcc -s user
 | `sandbox` | string | | `workspace-write` | 沙箱策略 |
 | `SESSION_ID` | string | | `""` | 会话 ID |
 | `timeout` | int | | `180` | 空闲超时（秒） |
-| `max_duration` | int | | `1200` | 总时长上限（秒） |
+| `max_duration` | int | | `3600` | 总时长上限（秒） |
 | `max_retries` | int | | `1` | 最大重试次数 |
 
 **支持技术栈**: React / Vue / Svelte / HTML+Tailwind
@@ -276,14 +275,14 @@ claude mcp remove omcc -s user
 | `sandbox` | string | | `workspace-write` | 沙箱策略 |
 | `SESSION_ID` | string | | `""` | 会话 ID |
 | `timeout` | int | | `120` | 空闲超时（秒） |
-| `max_duration` | int | | `600` | 总时长上限（秒） |
+| `max_duration` | int | | `3600` | 总时长上限（秒） |
 | `max_retries` | int | | `0` | 最大重试次数 |
 
 **适用场景**: 批量重命名、全局替换、格式化、依赖更新
 
 ### `librarian` - 网络研究专家
 
-调用 Gemini CLI 进行网络研究（文档查询、网络搜索、代码搜索等）。
+调用 OpenCode CLI 进行网络研究（文档查询、网络搜索、代码搜索等）。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
@@ -292,10 +291,10 @@ claude mcp remove omcc -s user
 | `sandbox` | string | | `read-only` | 沙箱策略（只读） |
 | `SESSION_ID` | string | | `""` | 会话 ID |
 | `timeout` | int | | `120` | 空闲超时（秒） |
-| `max_duration` | int | | `600` | 总时长上限（秒） |
+| `max_duration` | int | | `3600` | 总时长上限（秒） |
 | `max_retries` | int | | `1` | 最大重试次数 |
 
-**研究能力**（通过 Gemini CLI 配置的 MCP）：
+**研究能力**（通过 OpenCode CLI 配置的 MCP）：
 - `context7`: 官方文档查询
 - `exa`: 网络搜索
 - `Playwright`: 浏览器自动化（JS 渲染页面）
@@ -306,7 +305,7 @@ claude mcp remove omcc -s user
 
 ### `looker` - 多模态分析专家
 
-调用 Gemini CLI 分析媒体文件。
+调用 OpenCode CLI 分析媒体文件。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
@@ -316,7 +315,7 @@ claude mcp remove omcc -s user
 | `sandbox` | string | | `read-only` | 沙箱策略（只读） |
 | `SESSION_ID` | string | | `""` | 会话 ID |
 | `timeout` | int | | `120` | 空闲超时（秒） |
-| `max_duration` | int | | `300` | 总时长上限（秒） |
+| `max_duration` | int | | `3600` | 总时长上限（秒） |
 | `max_retries` | int | | `1` | 最大重试次数 |
 
 **分析能力**: PDF、图片、图表、架构图、截图
@@ -371,20 +370,21 @@ extended_context = false  # 是否启用 1m 扩展上下文（通过 [1m] 后缀
 [coder.env]
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 
-# Gemini 代理模型
+# OpenCode CLI 代理模型配置
+# 模型格式为 provider/model，需要在 ~/.config/opencode/opencode.jsonc 中配置 provider
 [gemini]
-model = "gemini-3-pro"
+model = "google/gemini-3-pro-preview"
 
 [frontend]
-model = "gemini-3-pro"
+model = "google/gemini-3-pro-preview"
 
 [librarian]
-model = "gemini-3-flash"
+model = "google/gemini-3-flash-preview"
 
 [looker]
-model = "gemini-3-flash"
+model = "google/gemini-3-flash-preview"
 
-# OpenCode 代理
+# Chore 杂务代理
 [chore]
 model = "anthropic/claude-sonnet-4-20250514"
 ```
@@ -473,7 +473,7 @@ uv run omcc-mcp
 - [FastMCP](https://github.com/jlowin/fastmcp) - MCP 框架
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) - 主框架文档
 - [Codex CLI](https://developers.openai.com/codex/quickstart) - 代码审核
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli) - 专家咨询
+- [OpenCode](https://opencode.ai) - 专家咨询/前端/网络研究/多模态
 - [智谱 AI](https://open.bigmodel.cn) - GLM-4.7 推荐后端
 
 ## 🙏 致谢

@@ -21,16 +21,16 @@
 Claude (Opus)     →  架构师 + 初审官 + 终审官 + 协调者
 Coder (可配置)    →  代码实现者（生成、修改、批量任务）
 Codex (OpenAI)    →  独立代码审核者（质量把关）
-Gemini (可选)     →  多面手专家（架构设计、第二意见）
-Frontend (Gemini 3 Pro) → 前端/UI 专家（界面设计、样式、动效）
+Gemini (OpenCode) →  多面手专家（架构设计、第二意见）
+Frontend (OpenCode) → 前端/UI 专家（界面设计、样式、动效）
 Chore (OpenCode)  →  杂务执行者（简单重复任务、批量操作）
-Librarian (Gemini 3 Flash) → 网络研究专家（文档查询 + 网络搜索 + 代码搜索）
-Looker (Gemini 3 Flash) → 多模态分析专家（PDF/图片/图表分析）
+Librarian (OpenCode) → 网络研究专家（文档查询 + 网络搜索 + 代码搜索）
+Looker (OpenCode) → 多模态分析专家（PDF/图片/图表分析）
 ```
 
 ### Librarian 网络研究能力
 
-Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
+Librarian 通过 OpenCode CLI 配置的 MCP 提供网络研究能力：
 
 | MCP | 功能 |
 |-----|------|
@@ -100,15 +100,15 @@ Oh-My-ClaudeCode/
 
 ### MCP 工具
 
-| 工具 | 功能 | 模型 | sandbox | 
+| 工具 | 功能 | 后端 | sandbox | 
 |------|------|------|---------|
-| `coder` | 代码生成/修改 | 可配置 | workspace-write |
+| `coder` | 代码生成/修改 | Claude CLI (可配置) | workspace-write |
 | `codex` | 代码审核 | OpenAI Codex | read-only |
-| `gemini` | 专家咨询/执行 | gemini-3-pro | workspace-write |
-| `frontend` | 前端/UI 开发 | gemini-3-pro | workspace-write |
+| `gemini` | 专家咨询/执行 | OpenCode CLI | workspace-write |
+| `frontend` | 前端/UI 开发 | OpenCode CLI | workspace-write |
 | `chore` | 杂务执行（批量操作） | OpenCode CLI | workspace-write |
-| `librarian` | 网络研究（文档+搜索+GitHub） | gemini-3-flash | read-only |
-| `looker` | 多模态分析（PDF/图片） | gemini-3-flash | read-only |
+| `librarian` | 网络研究（文档+搜索+GitHub） | OpenCode CLI | read-only |
+| `looker` | 多模态分析（PDF/图片） | OpenCode CLI | read-only |
 
 ### 核心特性
 
@@ -159,20 +159,21 @@ api_token = "your-api-token"
 base_url = "https://open.bigmodel.cn/api/anthropic"
 model = "glm-4.7"
 
-# Gemini CLI 代理模型配置
+# OpenCode CLI 代理模型配置
+# 模型格式为 provider/model，需要在 ~/.config/opencode/opencode.jsonc 中配置 provider
 [gemini]
-model = "gemini-3-pro"
+model = "google/gemini-3-pro-preview"
 
 [frontend]
-model = "gemini-3-pro"
+model = "google/gemini-3-pro-preview"
 
 [librarian]
-model = "gemini-3-flash"
+model = "google/gemini-3-flash-preview"
 
 [looker]
-model = "gemini-3-flash"
+model = "google/gemini-3-flash-preview"
 
-# OpenCode 代理配置
+# Chore 杂务代理配置
 [chore]
 model = "anthropic/claude-sonnet-4-20250514"
 ```

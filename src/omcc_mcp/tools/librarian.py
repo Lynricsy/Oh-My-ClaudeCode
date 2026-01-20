@@ -1,7 +1,7 @@
 """Librarian 工具实现
 
 一个专注于网络研究的子代理。
-基于 Gemini CLI，使用 gemini-3-flash 模型（快速、低成本）。
+基于 OpenCode CLI，使用 Gemini 3 Flash 模型（快速、低成本）。
 
 主要功能：
 - 查询官方文档和技术资料
@@ -10,6 +10,8 @@
 - 网页内容抓取和分析
 
 注意：本地代码库搜索请使用 Claude Code 的 Explore 代理。
+
+后端：OpenCode CLI (https://opencode.ai)
 """
 
 from __future__ import annotations
@@ -242,10 +244,10 @@ LIBRARIAN_SYSTEM_PROMPT = """# THE LIBRARIAN - 网络研究代理
 **声明**: [你主张的内容]
 
 **证据** ([来源](https://github.com/owner/repo/blob/<sha>/path#L10-L20)):
-\`\`\`typescript
+```typescript
 // 实际代码
 function example() { ... }
-\`\`\`
+```
 
 **解释**: 这样工作是因为 [代码中的具体原因]。
 ```
@@ -330,18 +332,17 @@ def safe_librarian_command(
     cmd: list[str],
     timeout: int = 120,  # Librarian 使用更短的超时（快速响应）
     max_duration: int = 3600,  # 最大 1 小时
-    prompt: str = "",
     cwd: Optional[Path] = None,
-) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
+) -> Iterator[tuple[Generator[str, None, None], list[Optional[int]], list[int]]]:
     """安全执行 Librarian 命令的上下文管理器"""
-    gemini_path = shutil.which('gemini')
-    if not gemini_path:
+    opencode_path = shutil.which('opencode')
+    if not opencode_path:
         raise CommandNotFoundError(
-            "未找到 gemini CLI。请确保已安装 Gemini CLI 并添加到 PATH。\n"
-            "安装指南：https://github.com/google-gemini/gemini-cli"
+            "未找到 opencode CLI。请确保已安装 OpenCode CLI 并添加到 PATH。\n"
+            "安装指南：https://opencode.ai/docs/cli/"
         )
     popen_cmd = cmd.copy()
-    popen_cmd[0] = gemini_path
+    popen_cmd[0] = opencode_path
 
     process = subprocess.Popen(
         popen_cmd,
@@ -360,6 +361,11 @@ def safe_librarian_command(
     def cleanup() -> None:
         """清理子进程和线程"""
         nonlocal thread
+        try:
+            if process.stdin and not process.stdin.closed:
+                process.stdin.close()
+        except (OSError, IOError):
+            pass
         try:
             if process.stdout and not process.stdout.closed:
                 process.stdout.close()
@@ -384,18 +390,13 @@ def safe_librarian_command(
     try:
         if process.stdin:
             try:
-                if prompt:
-                    process.stdin.write(prompt)
+                process.stdin.close()
             except (BrokenPipeError, OSError):
                 pass
-            finally:
-                try:
-                    process.stdin.close()
-                except (BrokenPipeError, OSError):
-                    pass
 
         output_queue: queue.Queue[str | None] = queue.Queue()
         raw_output_lines_holder = [0]
+        exit_code_holder: list[Optional[int]] = [None]  # 用于存储 exit_code
         GRACEFUL_SHUTDOWN_DELAY = 0.3
 
         def is_turn_completed(line: str) -> bool:
@@ -427,7 +428,7 @@ def safe_librarian_command(
         thread = threading.Thread(target=read_output, daemon=True)
         thread.start()
 
-        def generator() -> Generator[str, None, tuple[Optional[int], int]]:
+        def generator() -> Generator[str, None, None]:
             """生成器：读取输出并处理超时"""
             nonlocal thread
             start_time = time.time()
@@ -487,6 +488,9 @@ def safe_librarian_command(
             if timeout_error is not None:
                 raise timeout_error
 
+            # 将 exit_code 存储到 holder 中，避免 StopIteration 问题
+            exit_code_holder[0] = exit_code
+
             while not output_queue.empty():
                 try:
                     line = output_queue.get_nowait()
@@ -495,9 +499,8 @@ def safe_librarian_command(
                 except queue.Empty:
                     break
 
-            return (exit_code, raw_output_lines_holder[0])
-
-        yield generator()
+        # 返回 (generator, exit_code_holder, raw_output_lines_holder)
+        yield generator(), exit_code_holder, raw_output_lines_holder
 
     except Exception:
         cleanup()
@@ -573,6 +576,7 @@ def _is_auth_error(text: str) -> bool:
         "login required",
         "sign in",
         "oauth",
+        "api key",
     ]
     return any(keyword in text_lower for keyword in auth_keywords)
 
@@ -607,7 +611,7 @@ async def librarian_tool(
 ) -> Dict[str, Any]:
     """执行 Librarian 网络研究任务
 
-    调用 Gemini CLI 进行网络研究（文档查询、网络搜索、GitHub 搜索等）。
+    调用 OpenCode CLI 进行网络研究（文档查询、网络搜索、GitHub 搜索等）。
 
     **角色定位**：网络研究专家
     - 📖 文档查询：查询官方文档和技术资料（context7）
@@ -616,11 +620,13 @@ async def librarian_tool(
     - 📄 网页抓取：深度阅读技术文章（firecrawl）
 
     **特点**：
-    - 使用 gemini-3-flash 模型，响应快速、成本低
+    - 使用 Gemini 3 Flash 模型，响应快速、成本低
     - 默认只读模式，不会修改代码
     - 专注于外部信息检索，不处理本地代码搜索
 
     **注意**：本地代码搜索请使用 Claude 的 Explore 代理
+
+    **后端**：OpenCode CLI (https://opencode.ai)
 
     **使用场景**：
     - "React useEffect 的最佳实践"
@@ -639,16 +645,11 @@ async def librarian_tool(
     # 初始化指标收集器
     metrics = MetricsCollector(tool="librarian", prompt=PROMPT, sandbox=sandbox)
 
-    # 构建命令
-    # 使用 gemini-2.5-flash 模型（快速、低成本）
-    cmd = ["gemini"]
-    cmd.extend(["--output-format", "stream-json"])
+    # 构建 opencode run 命令
+    cmd = ["opencode", "run"]
+    cmd.extend(["--format", "json"])
 
-    # Librarian 是只读研究代理，使用 yolo 模式
-    # 注意：--sandbox 模式在某些环境下有 bunx 执行权限问题
-    cmd.append("--yolo")
-
-    # 使用配置的模型（默认 gemini-3-flash，快速、低成本）
+    # 使用配置的模型（默认 Gemini 3 Flash，快速、低成本）
     from omcc_mcp.config import get_agent_model
     model_to_use = get_agent_model("librarian")
     if model_to_use:
@@ -656,7 +657,7 @@ async def librarian_tool(
 
     # 会话恢复
     if SESSION_ID:
-        cmd.extend(["--resume", SESSION_ID])
+        cmd.extend(["--session", SESSION_ID])
 
     # 构建完整的 prompt，包含 system prompt
     full_prompt = f"""{LIBRARIAN_SYSTEM_PROMPT}
@@ -666,6 +667,9 @@ async def librarian_tool(
 用户请求：
 {PROMPT}
 """
+
+    # 添加 prompt
+    cmd.append(full_prompt)
 
     # 执行循环（支持重试）
     retries = 0
@@ -685,68 +689,74 @@ async def librarian_tool(
         last_lines: list[str] = []
 
         try:
-            with safe_librarian_command(cmd, timeout=timeout, max_duration=max_duration, prompt=full_prompt, cwd=cd) as gen:
-                try:
-                    for line in gen:
-                        last_lines.append(line)
-                        if len(last_lines) > 50:
-                            last_lines.pop(0)
+            with safe_librarian_command(cmd, timeout=timeout, max_duration=max_duration, cwd=cd) as (gen, exit_code_holder, raw_lines_holder):
+                for line in gen:
+                    last_lines.append(line)
+                    if len(last_lines) > 50:
+                        last_lines.pop(0)
 
-                        try:
-                            line_dict = json.loads(line.strip())
-                            event_type = line_dict.get("type", "")
+                    try:
+                        line_dict = json.loads(line.strip())
+                        event_type = line_dict.get("type", "")
 
-                            # 收集消息
-                            if return_all_messages:
-                                import copy
-                                safe_dict = copy.deepcopy(line_dict)
-                                if event_type == "tool_result":
-                                    if "content" in safe_dict:
-                                        safe_dict["content"] = "[truncated]"
-                                all_messages.append(safe_dict)
+                        # 收集消息
+                        if return_all_messages:
+                            import copy
+                            safe_dict = copy.deepcopy(line_dict)
+                            if event_type == "tool_result":
+                                if "content" in safe_dict:
+                                    safe_dict["content"] = "[truncated]"
+                            all_messages.append(safe_dict)
 
-                            # 提取 message 事件中的内容
-                            if event_type == "message":
-                                role = line_dict.get("role", "")
-                                content = line_dict.get("content", "")
-                                if role == "assistant" and content:
-                                    agent_messages += content
+                        # 提取 message 事件中的内容
+                        if event_type == "message":
+                            role = line_dict.get("role", "")
+                            content = line_dict.get("content", "")
+                            if role == "assistant" and content:
+                                agent_messages += content
 
-                            # 提取 result 事件
-                            if event_type == "result":
-                                response = line_dict.get("response", "")
-                                if response and not agent_messages:
-                                    agent_messages = response
+                        # 提取 text 事件 (OpenCode 格式)
+                        if event_type == "text":
+                            part = line_dict.get("part", {})
+                            text_content = part.get("text", "")
+                            if text_content:
+                                agent_messages += text_content
 
-                            # 提取 session_id
-                            if event_type == "init":
-                                if line_dict.get("session_id") is not None:
-                                    session_id = line_dict.get("session_id")
-                                if line_dict.get("thread_id") is not None:
-                                    session_id = line_dict.get("thread_id")
+                        # 提取 result 事件
+                        if event_type == "result":
+                            response = line_dict.get("response", "")
+                            if response and not agent_messages:
+                                agent_messages = response
 
-                            # 错误处理
-                            if event_type == "error":
-                                had_error = True
-                                error_msg = line_dict.get("message", str(line_dict))
-                                err_message += "\n\n[librarian error] " + error_msg
-                                if _is_auth_error(error_msg):
-                                    error_kind = ErrorKind.AUTH_REQUIRED
-                                elif error_kind != ErrorKind.AUTH_REQUIRED:
-                                    error_kind = ErrorKind.UPSTREAM_ERROR
+                        # 提取 session_id
+                        if event_type == "init":
+                            if line_dict.get("session_id") is not None:
+                                session_id = line_dict.get("session_id")
+                            if line_dict.get("thread_id") is not None:
+                                session_id = line_dict.get("thread_id")
 
-                        except json.JSONDecodeError:
-                            json_decode_errors += 1
-                            continue
-
-                        except Exception as error:
-                            err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        # 错误处理
+                        if event_type == "error":
                             had_error = True
-                            error_kind = ErrorKind.UNEXPECTED_EXCEPTION
-                            break
-                except StopIteration as e:
-                    if isinstance(e.value, tuple) and len(e.value) == 2:
-                        exit_code, raw_output_lines = e.value
+                            error_msg = line_dict.get("message", str(line_dict))
+                            err_message += "\n\n[librarian error] " + error_msg
+                            if _is_auth_error(error_msg):
+                                error_kind = ErrorKind.AUTH_REQUIRED
+                            elif error_kind != ErrorKind.AUTH_REQUIRED:
+                                error_kind = ErrorKind.UPSTREAM_ERROR
+
+                    except json.JSONDecodeError:
+                        json_decode_errors += 1
+                        continue
+
+                    except Exception as error:
+                        err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        had_error = True
+                        error_kind = ErrorKind.UNEXPECTED_EXCEPTION
+                        break
+                # for 循环结束后，从 holder 中获取 exit_code 和 raw_output_lines
+                exit_code = exit_code_holder[0]
+                raw_output_lines = raw_lines_holder[0]
 
         except CommandNotFoundError as e:
             metrics.finish(
@@ -869,10 +879,12 @@ async def librarian_tool(
             json_decode_errors = last_error["json_decode_errors"]
 
         if error_kind == ErrorKind.AUTH_REQUIRED:
-            auth_hint = """请先登录 Gemini CLI。运行以下命令完成认证：
-  gemini
+            auth_hint = """请先配置 OpenCode CLI。
 
-然后在交互界面中选择 "Login with Google" 完成登录。
+1. 运行 opencode 启动交互式配置
+2. 或者在 ~/.config/opencode/opencode.jsonc 中配置 provider 和 API Key
+
+参考文档：https://opencode.ai/docs/config/
 
 """
             err_message = auth_hint + err_message

@@ -29,27 +29,29 @@ extended_context = false
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 
 # ============================================================================
-# Gemini CLI 相关代理模型配置
+# OpenCode CLI 相关代理模型配置
+# 模型格式为 provider/model，如 google/gemini-3-pro-preview
+# 需要先在 ~/.config/opencode/opencode.jsonc 中配置对应的 provider
 # ============================================================================
 
 # Gemini 通用代理（架构咨询、第二意见）
 [gemini]
-model = "gemini-3-pro"
+model = "google/gemini-3-pro-preview"
 
 # Frontend 前端/UI 代理（设计、样式、动效）
 [frontend]
-model = "gemini-3-pro"
+model = "google/gemini-3-pro-preview"
 
 # Librarian 研究代理（代码搜索、文档查询、网络研究）
 [librarian]
-model = "gemini-3-flash"
+model = "google/gemini-3-flash-preview"
 
 # Looker 多模态代理（PDF、图片、图表分析）
 [looker]
-model = "gemini-3-flash"
+model = "google/gemini-3-flash-preview"
 
 # ============================================================================
-# OpenCode 相关代理配置
+# Chore 杂务代理配置（使用 OpenCode CLI）
 # ============================================================================
 
 # Chore 杂务代理（简单重复任务）

@@ -44,12 +44,12 @@ description: |
 | cd | - | 工作目录（必填） |
 | sandbox | read-only | 沙箱策略（只读） |
 | timeout | 120 | 空闲超时（秒） |
-| max_duration | 600 | 总时长上限（秒） |
+| max_duration | 3600 | 总时长上限（秒） |
 | max_retries | 1 | 自动重试次数 |
 
 ## 研究能力
 
-Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
+Librarian 通过 OpenCode CLI 配置的 MCP 提供网络研究能力：
 
 | MCP | 功能 | 示例场景 |
 |-----|------|----------|

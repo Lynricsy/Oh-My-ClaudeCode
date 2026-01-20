@@ -1,13 +1,15 @@
 """Frontend UI/UX Engineer 工具实现
 
 专注于前端/UI 开发的子代理。
-基于 Gemini CLI，使用 gemini-3-pro 模型。
+基于 OpenCode CLI，使用 Gemini 3 Pro 模型。
 
 主要功能：
 - 界面设计和布局实现
 - 样式和动效开发
 - 响应式适配
 - UI 审查和改进
+
+后端：OpenCode CLI (https://opencode.ai)
 """
 
 from __future__ import annotations
@@ -294,19 +296,18 @@ FRONTEND_SYSTEM_PROMPT = """# Frontend UI/UX Engineer - 设计师型开发者
 def safe_frontend_command(
     cmd: list[str],
     timeout: int = 180,
-    max_duration: int = 3600,  # 前端任务可能较长
-    prompt: str = "",
+    max_duration: int = 3600,
     cwd: Optional[Path] = None,
-) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
+) -> Iterator[tuple[Generator[str, None, None], list[Optional[int]], list[int]]]:
     """安全执行 Frontend 命令的上下文管理器"""
-    gemini_path = shutil.which('gemini')
-    if not gemini_path:
+    opencode_path = shutil.which('opencode')
+    if not opencode_path:
         raise CommandNotFoundError(
-            "未找到 gemini CLI。请确保已安装 Gemini CLI 并添加到 PATH。\n"
-            "安装指南：https://github.com/google-gemini/gemini-cli"
+            "未找到 opencode CLI。请确保已安装 OpenCode CLI 并添加到 PATH。\n"
+            "安装指南：https://opencode.ai/docs/cli/"
         )
     popen_cmd = cmd.copy()
-    popen_cmd[0] = gemini_path
+    popen_cmd[0] = opencode_path
 
     process = subprocess.Popen(
         popen_cmd,
@@ -325,6 +326,11 @@ def safe_frontend_command(
     def cleanup() -> None:
         """清理子进程和线程"""
         nonlocal thread
+        try:
+            if process.stdin and not process.stdin.closed:
+                process.stdin.close()
+        except (OSError, IOError):
+            pass
         try:
             if process.stdout and not process.stdout.closed:
                 process.stdout.close()
@@ -349,18 +355,13 @@ def safe_frontend_command(
     try:
         if process.stdin:
             try:
-                if prompt:
-                    process.stdin.write(prompt)
+                process.stdin.close()
             except (BrokenPipeError, OSError):
                 pass
-            finally:
-                try:
-                    process.stdin.close()
-                except (BrokenPipeError, OSError):
-                    pass
 
         output_queue: queue.Queue[str | None] = queue.Queue()
         raw_output_lines_holder = [0]
+        exit_code_holder: list[Optional[int]] = [None]  # 用于存储 exit_code
         GRACEFUL_SHUTDOWN_DELAY = 0.3
 
         def is_turn_completed(line: str) -> bool:
@@ -392,7 +393,7 @@ def safe_frontend_command(
         thread = threading.Thread(target=read_output, daemon=True)
         thread.start()
 
-        def generator() -> Generator[str, None, tuple[Optional[int], int]]:
+        def generator() -> Generator[str, None, None]:
             """生成器：读取输出并处理超时"""
             nonlocal thread
             start_time = time.time()
@@ -452,6 +453,9 @@ def safe_frontend_command(
             if timeout_error is not None:
                 raise timeout_error
 
+            # 将 exit_code 存储到 holder 中，避免 StopIteration 问题
+            exit_code_holder[0] = exit_code
+
             while not output_queue.empty():
                 try:
                     line = output_queue.get_nowait()
@@ -460,9 +464,8 @@ def safe_frontend_command(
                 except queue.Empty:
                     break
 
-            return (exit_code, raw_output_lines_holder[0])
-
-        yield generator()
+        # 返回 (generator, exit_code_holder, raw_output_lines_holder)
+        yield generator(), exit_code_holder, raw_output_lines_holder
 
     except Exception:
         cleanup()
@@ -513,6 +516,7 @@ def _is_auth_error(text: str) -> bool:
         "401",
         "403",
         "unauthorized",
+        "api key",
     ]
     return any(keyword in text_lower for keyword in auth_keywords)
 
@@ -547,7 +551,7 @@ async def frontend_tool(
 ) -> Dict[str, Any]:
     """执行 Frontend UI/UX Engineer 任务
 
-    调用 Gemini CLI (gemini-3-pro) 进行前端/UI 开发。
+    调用 OpenCode CLI 进行前端/UI 开发。
 
     **角色定位**：前端/UI 专家（设计师型开发者）
     - 🎨 界面设计和布局实现
@@ -556,7 +560,7 @@ async def frontend_tool(
     - ✨ UI 审查和改进
 
     **特点**：
-    - 使用 gemini-3-pro 模型
+    - 使用 Gemini 3 Pro 模型
     - 设计师视角：关注间距、色彩、微交互
     - 支持多技术栈：React/Vue/Svelte/HTML+Tailwind
 
@@ -565,6 +569,8 @@ async def frontend_tool(
     - 样式优化和动效开发
     - UI 审查和改进建议
     - 设计稿转代码
+
+    **后端**：OpenCode CLI (https://opencode.ai)
 
     **Prompt 模板**：
     ```
@@ -576,21 +582,15 @@ async def frontend_tool(
     """
     # 构建完整的 prompt（包含 System Prompt）
     full_prompt = f"{FRONTEND_SYSTEM_PROMPT}\n\n---\n\n{PROMPT}"
-    
+
     # 初始化指标收集器
     metrics = MetricsCollector(tool="frontend", prompt=full_prompt, sandbox=sandbox)
 
-    # 构建命令
-    cmd = ["gemini"]
-    cmd.extend(["--output-format", "stream-json"])
+    # 构建 opencode run 命令
+    cmd = ["opencode", "run"]
+    cmd.extend(["--format", "json"])
 
-    # Frontend 默认 workspace-write（需要写入文件）
-    if sandbox == "read-only":
-        cmd.append("--sandbox")
-    else:
-        cmd.append("--yolo")
-
-    # 使用配置的模型（默认 gemini-3-pro，更强的创意和代码能力）
+    # 使用配置的模型（默认 Gemini 3 Pro）
     from omcc_mcp.config import get_agent_model
     model_to_use = get_agent_model("frontend")
     if model_to_use:
@@ -598,7 +598,10 @@ async def frontend_tool(
 
     # 会话恢复
     if SESSION_ID:
-        cmd.extend(["--resume", SESSION_ID])
+        cmd.extend(["--session", SESSION_ID])
+
+    # 添加 prompt
+    cmd.append(full_prompt)
 
     # 执行循环（支持重试）
     retries = 0
@@ -618,58 +621,64 @@ async def frontend_tool(
         last_lines: list[str] = []
 
         try:
-            with safe_frontend_command(cmd, timeout=timeout, max_duration=max_duration, prompt=full_prompt, cwd=cd) as gen:
-                try:
-                    for line in gen:
-                        last_lines.append(line)
-                        if len(last_lines) > 50:
-                            last_lines.pop(0)
+            with safe_frontend_command(cmd, timeout=timeout, max_duration=max_duration, cwd=cd) as (gen, exit_code_holder, raw_lines_holder):
+                for line in gen:
+                    last_lines.append(line)
+                    if len(last_lines) > 50:
+                        last_lines.pop(0)
 
-                        try:
-                            line_dict = json.loads(line.strip())
-                            event_type = line_dict.get("type", "")
+                    try:
+                        line_dict = json.loads(line.strip())
+                        event_type = line_dict.get("type", "")
 
-                            if return_all_messages:
-                                all_messages.append(line_dict)
+                        if return_all_messages:
+                            all_messages.append(line_dict)
 
-                            if event_type == "message":
-                                role = line_dict.get("role", "")
-                                content = line_dict.get("content", "")
-                                if role == "assistant" and content:
-                                    agent_messages += content
+                        if event_type == "message":
+                            role = line_dict.get("role", "")
+                            content = line_dict.get("content", "")
+                            if role == "assistant" and content:
+                                agent_messages += content
 
-                            if event_type == "result":
-                                response = line_dict.get("response", "")
-                                if response and not agent_messages:
-                                    agent_messages = response
+                        # 提取 text 事件 (OpenCode 格式)
+                        if event_type == "text":
+                            part = line_dict.get("part", {})
+                            text_content = part.get("text", "")
+                            if text_content:
+                                agent_messages += text_content
 
-                            if event_type == "init":
-                                if line_dict.get("session_id") is not None:
-                                    session_id = line_dict.get("session_id")
-                                if line_dict.get("thread_id") is not None:
-                                    session_id = line_dict.get("thread_id")
+                        if event_type == "result":
+                            response = line_dict.get("response", "")
+                            if response and not agent_messages:
+                                agent_messages = response
 
-                            if event_type == "error":
-                                had_error = True
-                                error_msg = line_dict.get("message", str(line_dict))
-                                err_message += "\n\n[frontend error] " + error_msg
-                                if _is_auth_error(error_msg):
-                                    error_kind = ErrorKind.AUTH_REQUIRED
-                                elif error_kind != ErrorKind.AUTH_REQUIRED:
-                                    error_kind = ErrorKind.UPSTREAM_ERROR
+                        if event_type == "init":
+                            if line_dict.get("session_id") is not None:
+                                session_id = line_dict.get("session_id")
+                            if line_dict.get("thread_id") is not None:
+                                session_id = line_dict.get("thread_id")
 
-                        except json.JSONDecodeError:
-                            json_decode_errors += 1
-                            continue
-
-                        except Exception as error:
-                            err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        if event_type == "error":
                             had_error = True
-                            error_kind = ErrorKind.UNEXPECTED_EXCEPTION
-                            break
-                except StopIteration as e:
-                    if isinstance(e.value, tuple) and len(e.value) == 2:
-                        exit_code, raw_output_lines = e.value
+                            error_msg = line_dict.get("message", str(line_dict))
+                            err_message += "\n\n[frontend error] " + error_msg
+                            if _is_auth_error(error_msg):
+                                error_kind = ErrorKind.AUTH_REQUIRED
+                            elif error_kind != ErrorKind.AUTH_REQUIRED:
+                                error_kind = ErrorKind.UPSTREAM_ERROR
+
+                    except json.JSONDecodeError:
+                        json_decode_errors += 1
+                        continue
+
+                    except Exception as error:
+                        err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        had_error = True
+                        error_kind = ErrorKind.UNEXPECTED_EXCEPTION
+                        break
+                # for 循环结束后，从 holder 中获取 exit_code 和 raw_output_lines
+                exit_code = exit_code_holder[0]
+                raw_output_lines = raw_lines_holder[0]
 
         except CommandNotFoundError as e:
             metrics.finish(
@@ -789,10 +798,12 @@ async def frontend_tool(
             json_decode_errors = last_error["json_decode_errors"]
 
         if error_kind == ErrorKind.AUTH_REQUIRED:
-            auth_hint = """请先登录 Gemini CLI。运行以下命令完成认证：
-  gemini
+            auth_hint = """请先配置 OpenCode CLI。
 
-然后在交互界面中选择 "Login with Google" 完成登录。
+1. 运行 opencode 启动交互式配置
+2. 或者在 ~/.config/opencode/opencode.jsonc 中配置 provider 和 API Key
+
+参考文档：https://opencode.ai/docs/config/
 
 """
             err_message = auth_hint + err_message

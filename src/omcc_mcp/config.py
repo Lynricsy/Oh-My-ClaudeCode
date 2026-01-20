@@ -27,12 +27,12 @@ class ConfigError(Exception):
 # ============================================================================
 
 DEFAULT_MODELS = {
-    "coder": "glm-4.7",               # Coder 默认使用 GLM-4.7
-    "gemini": "gemini-3-pro",         # Gemini 默认模型
-    "frontend": "gemini-3-pro",       # Frontend 默认使用 Gemini 3 Pro
-    "librarian": "gemini-3-flash",    # Librarian 默认使用 Gemini 3 Flash
-    "looker": "gemini-3-flash",       # Looker 默认使用 Gemini 3 Flash
-    "chore": None,                    # Chore 使用 OpenCode 默认模型
+    "coder": "glm-4.7",                          # Coder 默认使用 GLM-4.7
+    "gemini": "google/gemini-3-pro-preview",     # Gemini 默认模型 (OpenCode 格式)
+    "frontend": "google/gemini-3-pro-preview",   # Frontend 默认使用 Gemini 3 Pro
+    "librarian": "google/gemini-3-flash-preview", # Librarian 默认使用 Gemini 3 Flash
+    "looker": "google/gemini-3-flash-preview",   # Looker 默认使用 Gemini 3 Flash
+    "chore": None,                               # Chore 使用 OpenCode 默认模型
 }
 
 # Coder 默认配置
