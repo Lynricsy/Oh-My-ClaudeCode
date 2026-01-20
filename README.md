@@ -35,7 +35,7 @@
 |------|------|------|------|
 | 👑 **架构师** | Claude | - | 需求分析、任务拆解、最终决策 |
 | 🔨 **执行者** | `coder` | Claude CLI + 可配置后端 | 代码生成、修改、批量任务 |
-| ⚖️ **审核官** | `reviewer` | Reviewer CLI (OpenAI) | 独立代码审核、架构咨询 |
+| ⚖️ **审核官** | `reviewer` | Codex CLI (OpenAI) | 独立代码审核、架构咨询 |
 | 🧠 **专家顾问** | `advisor` | OpenCode CLI | 架构设计、第二意见 |
 | 🎨 **前端专家** | `frontend` | OpenCode CLI | 界面设计、样式、动效 |
 | 🔧 **杂务执行** | `chore` | OpenCode CLI | 批量重命名、格式化等 |
@@ -154,7 +154,7 @@ sequenceDiagram
 |------|----------|------|
 | [uv](https://docs.astral.sh/uv/) | - | Python 包管理器 |
 | [Claude Code](https://claude.ai/code) | ≥ v2.0.56 | 主框架 |
-| [Reviewer CLI](https://developers.openai.com/reviewer/quickstart) | ≥ v0.61.0 | 代码审核 |
+| [Codex CLI](https://developers.openai.com/codex/quickstart) | ≥ v0.61.0 | 代码审核 |
 | [OpenCode](https://opencode.ai) | 推荐 | 专家咨询/前端/网络研究/多模态/杂务 |
 
 ### ⚡ 一键安装
@@ -472,7 +472,7 @@ uv run omcc-mcp
 
 - [FastMCP](https://github.com/jlowin/fastmcp) - MCP 框架
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) - 主框架文档
-- [Reviewer CLI](https://developers.openai.com/reviewer/quickstart) - 代码审核
+- [Codex CLI](https://developers.openai.com/codex/quickstart) - 代码审核
 - [OpenCode](https://opencode.ai) - 专家咨询/前端/网络研究/多模态
 - [智谱 AI](https://open.bigmodel.cn) - GLM-4.7 推荐后端
 

@@ -165,14 +165,14 @@ def run_reviewer_command(
         (exit_code, raw_output_lines) 元组
 
     Raises:
-        CommandNotFoundError: reviewer CLI 未安装时抛出
+        CommandNotFoundError: codex CLI 未安装时抛出
         CommandTimeoutError: 命令执行超时时抛出
     """
-    reviewer_path = shutil.which('reviewer')
+    reviewer_path = shutil.which('codex')
     if not reviewer_path:
         raise CommandNotFoundError(
-            "未找到 reviewer CLI。请确保已安装 Reviewer CLI 并添加到 PATH。\n"
-            "安装指南：https://developers.openai.com/reviewer/quickstart"
+            "未找到 codex CLI。请确保已安装 Codex CLI 并添加到 PATH。\n"
+            "安装指南：https://developers.openai.com/codex/quickstart"
         )
     popen_cmd = cmd.copy()
     popen_cmd[0] = reviewer_path
@@ -245,7 +245,7 @@ def run_reviewer_command(
         # 检查总时长硬上限（优先级高）
         if max_duration > 0 and (now - start_time) >= max_duration:
             timeout_error = CommandTimeoutError(
-                f"reviewer 执行超时（总时长超过 {max_duration}s），进程已终止。",
+                f"codex 执行超时（总时长超过 {max_duration}s），进程已终止。",
                 is_idle=False
             )
             break
@@ -253,7 +253,7 @@ def run_reviewer_command(
         # 检查空闲超时
         if (now - last_activity_time) >= timeout:
             timeout_error = CommandTimeoutError(
-                f"reviewer 空闲超时（{timeout}s 无输出），进程已终止。",
+                f"codex 空闲超时（{timeout}s 无输出），进程已终止。",
                 is_idle=True
             )
             break
@@ -293,7 +293,7 @@ def run_reviewer_command(
             process.wait()
         # 进程等待超时（罕见情况），视为总时长超时
         timeout_error = CommandTimeoutError(
-            f"reviewer 进程等待超时，进程已终止。",
+            f"codex 进程等待超时，进程已终止。",
             is_idle=False
         )
     finally:
@@ -331,11 +331,11 @@ def safe_reviewer_command(
             for line in gen:
                 process_line(line)
     """
-    reviewer_path = shutil.which('reviewer')
+    reviewer_path = shutil.which('codex')
     if not reviewer_path:
         raise CommandNotFoundError(
-            "未找到 reviewer CLI。请确保已安装 Reviewer CLI 并添加到 PATH。\n"
-            "安装指南：https://developers.openai.com/reviewer/quickstart"
+            "未找到 codex CLI。请确保已安装 Codex CLI 并添加到 PATH。\n"
+            "安装指南：https://developers.openai.com/codex/quickstart"
         )
     popen_cmd = cmd.copy()
     popen_cmd[0] = reviewer_path
@@ -440,14 +440,14 @@ def safe_reviewer_command(
 
                 if max_duration > 0 and (now - start_time) >= max_duration:
                     timeout_error = CommandTimeoutError(
-                        f"reviewer 执行超时（总时长超过 {max_duration}s），进程已终止。",
+                        f"codex 执行超时（总时长超过 {max_duration}s），进程已终止。",
                         is_idle=False
                     )
                     break
 
                 if (now - last_activity_time) >= timeout:
                     timeout_error = CommandTimeoutError(
-                        f"reviewer 空闲超时（{timeout}s 无输出），进程已终止。",
+                        f"codex 空闲超时（{timeout}s 无输出），进程已终止。",
                         is_idle=True
                     )
                     break
@@ -478,7 +478,7 @@ def safe_reviewer_command(
                     process.kill()
                     process.wait()
                 timeout_error = CommandTimeoutError(
-                    f"reviewer 进程等待超时，进程已终止。",
+                    f"codex 进程等待超时，进程已终止。",
                     is_idle=False
                 )
             finally:
@@ -650,7 +650,7 @@ async def reviewer_tool(
     ] = False,
     profile: Annotated[
         str,
-        "从 ~/.reviewer/config.toml 加载的配置文件名称",
+        "从 ~/.codex/config.toml 加载的配置文件名称",
     ] = "",
     max_retries: Annotated[int, "最大重试次数，默认 1（Reviewer 只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
@@ -674,7 +674,7 @@ async def reviewer_tool(
     image_list = image or []
 
     # 构建命令（shell=False 时不需要转义）
-    cmd = ["reviewer", "exec", "--sandbox", sandbox, "--cd", str(cd), "--json"]
+    cmd = ["codex", "exec", "--sandbox", sandbox, "--cd", str(cd), "--json"]
 
     if image_list:
         cmd.extend(["--image", ",".join(str(p) for p in image_list)])
@@ -786,7 +786,7 @@ async def reviewer_tool(
                         if "fail" in line_dict.get("type", ""):
                             had_error = True
                             fail_msg = line_dict.get("error", {}).get("message", "")
-                            err_message += "\n\n[reviewer error] " + fail_msg
+                            err_message += "\n\n[codex error] " + fail_msg
                             # 检测是否为认证错误（优先级高于 UPSTREAM_ERROR）
                             if _is_auth_error(fail_msg):
                                 error_kind = ErrorKind.AUTH_REQUIRED
@@ -799,7 +799,7 @@ async def reviewer_tool(
 
                             if not is_reconnecting:
                                 had_error = True
-                                err_message += "\n\n[reviewer error] " + error_msg
+                                err_message += "\n\n[codex error] " + error_msg
                                 # 检测是否为认证错误（优先级高于 UPSTREAM_ERROR）
                                 if _is_auth_error(error_msg):
                                     error_kind = ErrorKind.AUTH_REQUIRED
@@ -960,11 +960,11 @@ async def reviewer_tool(
         final_error = err_message
         if error_kind == ErrorKind.AUTH_REQUIRED:
             final_error = (
-                "请先登录 Reviewer CLI。运行以下命令完成认证：\n"
-                "  reviewer login\n"
+                "请先登录 Codex CLI。运行以下命令完成认证：\n"
+                "  codex login\n"
                 "\n"
                 "或使用 API Key 认证：\n"
-                "  printenv OPENAI_API_KEY | reviewer login --with-api-key\n"
+                "  printenv OPENAI_API_KEY | codex login --with-api-key\n"
                 "\n" + err_message
             )
 

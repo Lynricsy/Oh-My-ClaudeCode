@@ -187,7 +187,7 @@ model = "anthropic/claude-sonnet-4-20250514"
 - [ReviewerMCP](https://github.com/GuDaStudio/reviewermcp) - 核心参考实现
 - [FastMCP](https://github.com/jlowin/fastmcp) - MCP 框架
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)
-- [Reviewer CLI](https://developers.openai.com/reviewer/quickstart)
+- [Codex CLI](https://developers.openai.com/codex/quickstart)
 - [OpenCode CLI](https://opencode.ai/docs)
 
 ---

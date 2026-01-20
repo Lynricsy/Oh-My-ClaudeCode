@@ -41,7 +41,7 @@ OMCC connects multiple top-tier models to build an efficient, cost-effective, an
 | **Architect** | Claude | Sisyphus (Claude Opus) |
 | **Tool Invocation** | MCP Protocol | Sub-agent Delegation |
 | **Coder** | claude CLI + Configurable Backend | document-writer Agent |
-| **Reviewer** | reviewer CLI | oracle Agent |
+| **Reviewer** | codex CLI | oracle Agent |
 | **Advisor** | advisor CLI | frontend-ui-ux-engineer Agent |
 | **Use Case** | Claude Code Users | Prefer Open Source, Multi-LLM Providers |
 | **Config Complexity** | Medium | Higher |
@@ -98,7 +98,7 @@ flowchart TB
 
     subgraph ToolLayer ["Execution Layer"]
         Coder["🔨 Coder Tool<br><code>claude CLI → Configurable Backend</code><br>sandbox: workspace-write"]
-        Reviewer["⚖️ Reviewer Tool<br><code>reviewer CLI</code><br>sandbox: read-only"]
+        Reviewer["⚖️ Reviewer Tool<br><code>codex CLI</code><br>sandbox: read-only"]
         Advisor["🧠 Advisor Tool<br><code>advisor CLI</code><br>sandbox: workspace-write"]
     end
 
@@ -148,7 +148,7 @@ Before starting, ensure you have installed the following tools:
     *   Windows: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
     *   macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 *   **Claude Code**: Version **≥ v2.0.56** ([Installation Guide](https://code.claude.com/docs))
-*   **Reviewer CLI**: Version **≥ v0.61.0** ([Installation Guide](https://developers.openai.com/reviewer/quickstart))
+*   **Codex CLI**: Version **≥ v0.61.0** ([Installation Guide](https://developers.openai.com/codex/quickstart))
 *   **Advisor CLI** (Optional): Required for Advisor tool ([Installation Guide](https://github.com/google-advisor/advisor-cli))
 *   **Coder Backend API Token**: User configuration required. GLM-4.7 is recommended as reference. Get token from [Zhipu AI](https://open.bigmodel.cn).
 
@@ -156,7 +156,7 @@ Before starting, ensure you have installed the following tools:
 > *   **Authorization**: The `claude`, `reviewer`, and `advisor` CLI tools must be logged in locally.
 > *   **Cost Warning**: Using these tools typically involves subscription fees or API usage costs.
 >     *   **Claude Code**: Requires an Anthropic account with billing set up (or 3rd-party integration).
->     *   **Reviewer CLI**: Requires an OpenAI account or API credits.
+>     *   **Codex CLI**: Requires an OpenAI account or API credits.
 >     *   **Advisor CLI**: Defaults to the `advisor-3-pro-preview` model (may involve Google AI subscription or API limits).
 >     *   **Coder API**: You are responsible for the API costs of the configured backend model (e.g., Zhipu AI, DeepSeek).
 > *   Please ensure all tools are authenticated and account resources are sufficient before use.
