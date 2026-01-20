@@ -694,7 +694,18 @@ async def codex_tool(
     if SESSION_ID:
         cmd.extend(["resume", str(SESSION_ID)])
 
-    # PROMPT 通过 stdin 传递，不再作为命令行参数
+    # 构建完整的 prompt，包含引导提示词
+    full_prompt = f"""{PROMPT}
+
+---
+
+**最终回复要求**：在你的最终回复中，必须包含完整的审核总结：
+1. **审核过程**：简述你检查了哪些方面
+2. **关键发现**：列出发现的问题或亮点
+3. **最终结论**：明确给出 ✅ 通过 / ⚠️ 建议优化 / ❌ 需要修改
+4. **改进建议**：如有问题，给出具体的改进方向
+
+这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的分析过程。"""
 
     # 超时设置（内部固定，不允许外部修改）
     timeout = 300  # 空闲超时 5 分钟
@@ -718,7 +729,7 @@ async def codex_tool(
         last_lines: list[str] = []
 
         try:
-            with safe_codex_command(cmd, timeout=timeout, max_duration=max_duration, prompt=PROMPT) as (gen, exit_code_holder, raw_lines_holder):
+            with safe_codex_command(cmd, timeout=timeout, max_duration=max_duration, prompt=full_prompt) as (gen, exit_code_holder, raw_lines_holder):
                 for line in gen:
                     last_lines.append(line)
                     if len(last_lines) > 50:
@@ -745,8 +756,11 @@ async def codex_tool(
                         item = line_dict.get("item", {})
                         item_type = item.get("type", "")
 
+                        # 提取 agent_message（只保留最后一轮回复）
                         if item_type == "agent_message":
-                            agent_messages += item.get("text", "")
+                            text = item.get("text", "")
+                            if text:
+                                agent_messages = text  # 覆盖而非累加，只保留最后一轮
 
                         if line_dict.get("thread_id") is not None:
                             thread_id = line_dict.get("thread_id")

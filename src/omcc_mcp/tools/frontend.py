@@ -285,7 +285,21 @@ FRONTEND_SYSTEM_PROMPT = """# Frontend UI/UX Engineer - 设计师型开发者
 如果任务涉及非前端代码、外部研究或架构决策，请求主代理（Claude）路由到适当的代理：
 - 代码实现（设计完成后） → Coder
 - 外部研究 → Librarian
-- 架构决策 → Codex/Gemini"""
+- 架构决策 → Codex/Gemini
+
+---
+
+## 最终回复要求
+
+**重要**：在你的最终回复中，必须包含完整的工作总结：
+
+1. **实现过程**：简述你做了哪些改动
+2. **关键决策**：解释为什么选择这种实现方式
+3. **最终效果**：描述改动后的视觉/交互效果
+4. **后续建议**：如有进一步优化空间，给出建议
+
+这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的实现过程。
+因此你需要在最终回复中完整总结你的工作成果。"""
 
 
 # ============================================================================
@@ -644,11 +658,12 @@ async def frontend_tool(
                                     part["text"] = text[:1000] + "\n... [truncated] ..."
                             all_messages.append(safe_dict)
 
+                        # 提取 message 事件中的内容（只保留最后一轮回复）
                         if event_type == "message":
                             role = line_dict.get("role", "")
                             content = line_dict.get("content", "")
                             if role == "assistant" and content:
-                                agent_messages += content
+                                agent_messages = content  # 覆盖而非累加，只保留最后一轮
 
                         # 提取 text 事件 (OpenCode 格式)
                         if event_type == "text":
@@ -657,10 +672,14 @@ async def frontend_tool(
                             if text_content:
                                 agent_messages += text_content
 
+                        # message_end 事件标志一轮回复结束
+                        if event_type == "message_end":
+                            pass
+
                         if event_type == "result":
                             response = line_dict.get("response", "")
-                            if response and not agent_messages:
-                                agent_messages = response
+                            if response:
+                                agent_messages = response  # 覆盖为最终结果
 
                         if event_type == "init":
                             if line_dict.get("session_id") is not None:

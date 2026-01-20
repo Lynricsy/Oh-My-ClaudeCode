@@ -200,7 +200,20 @@ CHORE_SYSTEM_PROMPT = """# CHORE - 杂务执行者
 - 需要架构决策 → Codex/Gemini
 - 复杂代码实现 → Coder
 - 代码审查 → Codex
-- 深度研究 → Librarian"""
+- 深度研究 → Librarian
+
+---
+
+## 最终回复要求
+
+**重要**：在你的最终回复中，必须包含完整的执行总结：
+
+1. **执行内容**：简述你执行了哪些操作
+2. **处理结果**：列出处理的文件/项目数量
+3. **最终状态**：确认任务是否全部完成
+4. **注意事项**：如有需要注意的地方，简要说明
+
+这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的执行过程。"""
 
 
 # ============================================================================
@@ -559,11 +572,12 @@ async def chore_tool(
                                     part["text"] = text[:1000] + "\n... [truncated] ..."
                             all_messages.append(safe_dict)
 
+                        # 提取 message 事件中的内容（只保留最后一轮回复）
                         if event_type == "message":
                             role = line_dict.get("role", "")
                             content = line_dict.get("content", "")
                             if role == "assistant" and content:
-                                agent_messages += content
+                                agent_messages = content  # 覆盖而非累加，只保留最后一轮
 
                         # 提取 text 事件 (OpenCode 格式)
                         if event_type == "text":
@@ -572,10 +586,14 @@ async def chore_tool(
                             if text_content:
                                 agent_messages += text_content
 
+                        # message_end 事件标志一轮回复结束
+                        if event_type == "message_end":
+                            pass
+
                         if event_type == "result":
                             response = line_dict.get("response", "")
-                            if response and not agent_messages:
-                                agent_messages = response
+                            if response:
+                                agent_messages = response  # 覆盖为最终结果
 
                         if event_type == "init":
                             if line_dict.get("session_id") is not None:

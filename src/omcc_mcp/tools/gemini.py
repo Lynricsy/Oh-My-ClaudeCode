@@ -510,9 +510,22 @@ async def gemini_tool(
     if SESSION_ID:
         cmd.extend(["--session", SESSION_ID])
 
+    # 构建完整的 prompt，包含引导提示词
+    full_prompt = f"""{PROMPT}
+
+---
+
+**最终回复要求**：在你的最终回复中，必须包含完整的工作总结：
+1. **执行过程**：简述你做了哪些操作
+2. **关键决策**：解释为什么选择这种方案
+3. **最终结果**：描述完成的效果或结论
+4. **后续建议**：如有进一步优化空间，给出建议
+
+这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的执行过程。"""
+
     # 添加 prompt（使用 -- 结束选项解析，防止 prompt 以 - 开头时被误解析）
     cmd.append("--")
-    cmd.append(PROMPT)
+    cmd.append(full_prompt)
 
     # 执行循环（支持重试）
     retries = 0
@@ -555,10 +568,11 @@ async def gemini_tool(
 
                         # 提取 message 事件中的内容
                         if event_type == "message":
+                            # 提取 message 事件中的内容（只保留最后一轮回复）
                             role = line_dict.get("role", "")
                             content = line_dict.get("content", "")
                             if role == "assistant" and content:
-                                agent_messages += content
+                                agent_messages = content  # 覆盖而非累加，只保留最后一轮
 
                         # 提取 text 事件 (OpenCode 格式)
                         if event_type == "text":
@@ -567,12 +581,15 @@ async def gemini_tool(
                             if text_content:
                                 agent_messages += text_content
 
+                        # message_end 事件标志一轮回复结束
+                        if event_type == "message_end":
+                            pass
+
                         # 提取 result 事件（最终统计）
                         if event_type == "result":
                             response = line_dict.get("response", "")
                             if response:
-                                if not agent_messages:
-                                    agent_messages = response
+                                agent_messages = response  # 覆盖为最终结果
 
                         # 提取 session_id
                         if event_type == "init":

@@ -211,6 +211,20 @@ LOOKER_SYSTEM_PROMPT = """# MULTIMODAL LOOKER
 </summary>
 ```
 
+---
+
+## 最终回复要求
+
+**重要**：在你的最终回复中，必须包含完整的分析总结：
+
+1. **分析过程**：简述你如何分析这个文件
+2. **关键发现**：列出提取的核心信息
+3. **最终答案**：直接回答用户的分析目标
+4. **不确定点**：如有信息不完整，明确说明
+
+这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的分析过程。
+因此你需要在最终回复中完整总结你的分析结果。
+
 你的输出直接传递给主代理继续工作。"""
 
 
@@ -593,11 +607,12 @@ async def looker_tool(
                                     part["text"] = text[:1000] + "\n... [truncated] ..."
                             all_messages.append(safe_dict)
 
+                        # 提取 message 事件中的内容（只保留最后一轮回复）
                         if event_type == "message":
                             role = line_dict.get("role", "")
                             content = line_dict.get("content", "")
                             if role == "assistant" and content:
-                                agent_messages += content
+                                agent_messages = content  # 覆盖而非累加，只保留最后一轮
 
                         # 提取 text 事件 (OpenCode 格式)
                         if event_type == "text":
@@ -606,10 +621,14 @@ async def looker_tool(
                             if text_content:
                                 agent_messages += text_content
 
+                        # message_end 事件标志一轮回复结束
+                        if event_type == "message_end":
+                            pass
+
                         if event_type == "result":
                             response = line_dict.get("response", "")
-                            if response and not agent_messages:
-                                agent_messages = response
+                            if response:
+                                agent_messages = response  # 覆盖为最终结果
 
                         if event_type == "init":
                             if line_dict.get("session_id") is not None:

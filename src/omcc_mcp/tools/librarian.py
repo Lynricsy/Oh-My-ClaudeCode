@@ -320,7 +320,21 @@ Librarian 是只读研究者。以下工具被 **禁止**：
 ## 范围边界
 
 - **本地代码搜索**：请告知用户使用 Claude 的 Explore 代理
-- **代码修改**：请路由到 Coder/Frontend 代理"""
+- **代码修改**：请路由到 Coder/Frontend 代理
+
+---
+
+## 最终回复要求
+
+**重要**：在你的最终回复中，必须包含完整的研究总结：
+
+1. **研究过程**：简述你做了哪些搜索/查询
+2. **关键发现**：列出找到的核心信息和证据
+3. **最终答案**：直接回答用户的问题
+4. **来源引用**：附上所有使用的权威链接
+
+这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的工具调用过程。
+因此你需要在最终回复中完整总结你的研究结果。"""
 
 
 # ============================================================================
@@ -709,25 +723,34 @@ async def librarian_tool(
                                     safe_dict["content"] = "[truncated]"
                             all_messages.append(safe_dict)
 
-                        # 提取 message 事件中的内容
+                        # 提取 message 事件中的内容（只保留最后一轮回复）
                         if event_type == "message":
                             role = line_dict.get("role", "")
                             content = line_dict.get("content", "")
                             if role == "assistant" and content:
-                                agent_messages += content
+                                agent_messages = content  # 覆盖而非累加，只保留最后一轮
 
                         # 提取 text 事件 (OpenCode 格式)
+                        # 对于 text 事件，需要累加同一轮回复的多个片段
                         if event_type == "text":
                             part = line_dict.get("part", {})
                             text_content = part.get("text", "")
                             if text_content:
+                                # 如果是新的一轮回复（有完整消息），累加
+                                # 否则继续累加当前回复的片段
                                 agent_messages += text_content
+
+                        # message_end 事件标志一轮回复结束，重置累加
+                        if event_type == "message_end":
+                            # 不做任何操作，agent_messages 保持当前累加的内容
+                            # 下一轮 message 开始时会通过 message 事件覆盖
+                            pass
 
                         # 提取 result 事件
                         if event_type == "result":
                             response = line_dict.get("response", "")
-                            if response and not agent_messages:
-                                agent_messages = response
+                            if response:
+                                agent_messages = response  # 覆盖为最终结果
 
                         # 提取 session_id
                         if event_type == "init":

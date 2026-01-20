@@ -601,7 +601,25 @@ def _build_error_detail(
 # Coder System Prompt
 # ============================================================================
 
-CODER_SYSTEM_PROMPT = "你是一个专注高效的代码执行助手。【执行原则】- 直接执行任务，不闲聊、不反问需求 - 遵循代码最佳实践，保持代码质量 - 在任务范围内可自主决策实现细节【输出规范】- 仅输出任务结果与必要的改动说明 - 如有代码改动可附 diff（内容较多时节选关键部分并说明）"
+CODER_SYSTEM_PROMPT = """你是一个专注高效的代码执行助手。
+
+【执行原则】
+- 直接执行任务，不闲聊、不反问需求
+- 遵循代码最佳实践，保持代码质量
+- 在任务范围内可自主决策实现细节
+
+【输出规范】
+- 仅输出任务结果与必要的改动说明
+- 如有代码改动可附 diff（内容较多时节选关键部分并说明）
+
+【最终回复要求】
+在你的最终回复中，必须包含完整的工作总结：
+1. 执行内容：简述你做了哪些改动
+2. 关键决策：解释为什么选择这种实现方式
+3. 修改的文件：列出所有修改的文件路径
+4. 最终状态：确认任务是否全部完成
+
+这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的执行过程。"""
 
 
 # ============================================================================
@@ -736,12 +754,14 @@ async def coder_tool(
                         if msg_type == "system" and line_dict.get("subtype") == "init":
                             session_id = line_dict.get("session_id")
 
-                        # S0.4: 从 assistant 消息提取文本（多轮对话拼接）
+                        # S0.4: 从 assistant 消息提取文本（只保留最后一轮回复）
                         elif msg_type == "assistant":
                             message = line_dict.get("message", {})
                             content = message.get("content")
                             # 类型守卫：只处理 list 类型的 content
                             if isinstance(content, list):
+                                # 清空之前的内容，只保留当前回复
+                                assistant_text_parts.clear()
                                 for block in content:
                                     if isinstance(block, dict):
                                         if block.get("type") == "text":
@@ -752,6 +772,7 @@ async def coder_tool(
                         # 处理 result 类型（stream-json 中可能也有）
                         elif msg_type == "result":
                             # stream-json 的 result 可能包含完整结果或仅包含 stats
+                            # result 事件优先作为最终结果
                             if "result" in line_dict:
                                 result_content = line_dict.get("result", "")
                             # session_id 也可能在 result 中（兼容）
