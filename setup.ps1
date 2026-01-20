@@ -3,6 +3,9 @@
 
 param(
     [switch]$WhatIf,
+    [switch]$Update,
+    [Alias("u")]
+    [switch]$UpdateAlias,
     [switch]$Help
 )
 
@@ -11,20 +14,25 @@ if ($Help) {
     Write-Host @"
 OMCC One-Click Setup Script for Windows
 
-Usage: .\setup.ps1 [-WhatIf] [-Help]
+Usage: .\setup.ps1 [-WhatIf] [-Update] [-Help]
 
 Options:
   -WhatIf    Dry-run mode. Show what would be done without making changes.
+  -Update    Update mode. Skip interactive configuration,
+             only update MCP server, Skills, and CLAUDE.md.
+  -u         Alias for -Update.
   -Help      Show this help message.
 
 Examples:
-  .\setup.ps1           # Run the setup
+  .\setup.ps1           # Full installation with configuration
   .\setup.ps1 -WhatIf   # Preview what would be done
+  .\setup.ps1 -Update   # Quick update without re-configuration
 "@
     exit 0
 }
 
 $DryRun = $WhatIf.IsPresent
+$UpdateMode = $Update.IsPresent -or $UpdateAlias.IsPresent
 
 # Force UTF-8 encoding for file operations
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
@@ -60,12 +68,18 @@ function Write-DryRun {
 }
 
 # ==============================================================================
-# Dry-run mode banner
+# Mode banners
 # ==============================================================================
 if ($DryRun) {
     Write-Host "`n============================================================" -ForegroundColor Magenta
     Write-Host "  DRY-RUN MODE - No changes will be made" -ForegroundColor Magenta
     Write-Host "============================================================`n" -ForegroundColor Magenta
+}
+
+if ($UpdateMode) {
+    Write-Host "`n============================================================" -ForegroundColor Cyan
+    Write-Host "  UPDATE MODE - Skipping interactive configuration" -ForegroundColor Cyan
+    Write-Host "============================================================`n" -ForegroundColor Cyan
 }
 
 # ==============================================================================
@@ -412,26 +426,40 @@ if ($DryRun) {
                 Write-WarningMsg "Please manually copy the OMCC configuration to $claudeMdPath"
             }
         } else {
-            # Check if OMCC config already exists
-            $content = Get-Content $claudeMdPath -Raw -Encoding UTF8
-            if ($content -match [regex]::Escape($omccMarker)) {
-                Write-WarningMsg "OMCC configuration already exists in CLAUDE.md, skipping"
-            } else {
-                # Append OMCC config
+        # Check if OMCC config already exists
+        $content = Get-Content $claudeMdPath -Raw -Encoding UTF8
+        if ($content -match [regex]::Escape($omccMarker)) {
+            if ($UpdateMode) {
+                # In update mode, replace existing OMCC config
                 if (Test-Path $omccConfigPath) {
+                    # Remove old OMCC config and append new one
+                    $beforeMarker = ($content -split [regex]::Escape($omccMarker))[0].TrimEnd()
                     $omccContent = Get-Content $omccConfigPath -Raw -Encoding UTF8
-                    Add-Content -Path $claudeMdPath -Value "`n$omccContent" -Encoding UTF8
-                    Write-Success "Appended OMCC configuration to CLAUDE.md"
+                    $newContent = $beforeMarker + "`n`n" + $omccContent
+                    [System.IO.File]::WriteAllText($claudeMdPath, $newContent, [System.Text.UTF8Encoding]::new($false))
+                    Write-Success "Updated OMCC configuration in CLAUDE.md"
                 } else {
                     Write-WarningMsg "OMCC global prompt template not found at $omccConfigPath"
-                    Write-WarningMsg "Please manually copy the OMCC configuration to $claudeMdPath"
                 }
+            } else {
+                Write-WarningMsg "OMCC configuration already exists in CLAUDE.md, skipping"
+            }
+        } else {
+            # Append OMCC config
+            if (Test-Path $omccConfigPath) {
+                $omccContent = Get-Content $omccConfigPath -Raw -Encoding UTF8
+                Add-Content -Path $claudeMdPath -Value "`n$omccContent" -Encoding UTF8
+                Write-Success "Appended OMCC configuration to CLAUDE.md"
+            } else {
+                Write-WarningMsg "OMCC global prompt template not found at $omccConfigPath"
+                Write-WarningMsg "Please manually copy the OMCC configuration to $claudeMdPath"
             }
         }
-    } catch {
-        Write-ErrorMsg "Failed to configure global CLAUDE.md: $_"
-        exit 1
     }
+} catch {
+    Write-ErrorMsg "Failed to configure global CLAUDE.md: $_"
+    exit 1
+}
 }
 
 # ==============================================================================
@@ -499,8 +527,15 @@ if ($DryRun) {
             # Copy settings.json if source exists
             if (Test-Path $geminiSettingsSource) {
                 if (Test-Path $geminiSettingsPath) {
-                    Write-WarningMsg "Gemini settings.json already exists, skipping"
-                    Write-WarningMsg "To update, manually merge: $geminiSettingsSource"
+                    if ($UpdateMode) {
+                        # In update mode, backup and replace settings.json
+                        Copy-Item $geminiSettingsPath "${geminiSettingsPath}.backup" -Force
+                        Copy-Item $geminiSettingsSource $geminiSettingsPath -Force
+                        Write-Success "Updated Gemini settings.json (backup: ${geminiSettingsPath}.backup)"
+                    } else {
+                        Write-WarningMsg "Gemini settings.json already exists, skipping"
+                        Write-WarningMsg "To update, manually merge: $geminiSettingsSource"
+                    }
                 } else {
                     Copy-Item $geminiSettingsSource $geminiSettingsPath
                     Write-Success "Installed Gemini settings.json"
@@ -508,25 +543,30 @@ if ($DryRun) {
             }
 
             # =================================================================
-            # Step 6.1: Check MCP dependencies
+            # Step 6.1: Check MCP dependencies (skip in update mode)
             # =================================================================
-            Write-Host ""
-            Write-Host "  Checking MCP dependencies..." -ForegroundColor Cyan
+            if ($UpdateMode) {
+                Write-Success "Update mode: Skipping MCP dependency check and API key configuration"
+            } else {
+                Write-Host ""
+                Write-Host "  Checking MCP dependencies..." -ForegroundColor Cyan
 
-            # Check npm/npx (required for firecrawl MCP)
-            $npxAvailable = $false
-            try {
-                $null = Get-Command npx -ErrorAction Stop
-                $npxAvailable = $true
-                Write-Success "npx is available (required for firecrawl MCP)"
-            } catch {
-                Write-WarningMsg "npx not found (required for firecrawl MCP)"
-                Write-WarningMsg "Install Node.js: https://nodejs.org/"
+                # Check npm/npx (required for firecrawl MCP)
+                $npxAvailable = $false
+                try {
+                    $null = Get-Command npx -ErrorAction Stop
+                    $npxAvailable = $true
+                    Write-Success "npx is available (required for firecrawl MCP)"
+                } catch {
+                    Write-WarningMsg "npx not found (required for firecrawl MCP)"
+                    Write-WarningMsg "Install Node.js: https://nodejs.org/"
+                }
             }
 
             # =================================================================
-            # Step 6.2: Configure API keys for MCP servers
+            # Step 6.2: Configure API keys for MCP servers (skip in update mode)
             # =================================================================
+            if (-not $UpdateMode) {
             Write-Host ""
             Write-Host "  Configuring API keys for MCP servers..." -ForegroundColor Cyan
             Write-Host ""
@@ -747,14 +787,16 @@ if (Test-Path "`$env:USERPROFILE\.gemini\.env.ps1") { . "`$env:USERPROFILE\.gemi
                     }
                 }
             }
+            }  # End of UpdateMode check for Step 6.2
 
             # =================================================================
-            # Step 6.3: Install UI/UX Pro Max skill (optional)
+            # Step 6.3: Install UI/UX Pro Max skill (optional, skip in update mode)
             # =================================================================
-            Write-Host ""
-            Write-Host "  Installing UI/UX Pro Max skill (optional)..." -ForegroundColor Cyan
+            if (-not $UpdateMode) {
+                Write-Host ""
+                Write-Host "  Installing UI/UX Pro Max skill (optional)..." -ForegroundColor Cyan
 
-            $npmInstalled = $false
+                $npmInstalled = $false
             try {
                 $null = Get-Command npm -ErrorAction Stop
                 $npmInstalled = $true
@@ -791,6 +833,7 @@ if (Test-Path "`$env:USERPROFILE\.gemini\.env.ps1") { . "`$env:USERPROFILE\.gemi
                     }
                 }
             }
+            }  # End of UpdateMode check for Step 6.3
         } catch {
             Write-WarningMsg "Failed to configure Gemini CLI: $_"
         }
@@ -798,9 +841,12 @@ if (Test-Path "`$env:USERPROFILE\.gemini\.env.ps1") { . "`$env:USERPROFILE\.gemi
 }
 
 # ==============================================================================
-# Step 7: Configure Coder
+# Step 7: Configure Coder (skip in update mode)
 # ==============================================================================
-Write-Step "Step 7: Configuring Coder..."
+if ($UpdateMode) {
+    Write-Step "Step 7: Skipping Coder configuration (update mode)"
+} else {
+    Write-Step "Step 7: Configuring Coder..."
 
 $configDir = "$env:USERPROFILE\.omcc-mcp"
 $configPath = "$configDir\config.toml"
@@ -891,6 +937,7 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
         exit 1
     }
 }
+}  # End of UpdateMode check for Step 7
 # ==============================================================================
 # Done!
 # ==============================================================================

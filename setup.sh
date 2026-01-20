@@ -12,6 +12,43 @@ NC='\033[0m' # No Color
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Parse arguments
+UPDATE_MODE=false
+HELP_MODE=false
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -u|--update) UPDATE_MODE=true ;;
+        -h|--help) HELP_MODE=true ;;
+        *) echo "Unknown parameter: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+# Show help
+if [ "$HELP_MODE" = true ]; then
+    echo "OMCC One-Click Setup Script for macOS/Linux"
+    echo ""
+    echo "Usage: ./setup.sh [options]"
+    echo ""
+    echo "Options:"
+    echo "  -u, --update    Update mode. Skip interactive configuration,"
+    echo "                  only update MCP server, Skills, and CLAUDE.md."
+    echo "  -h, --help      Show this help message."
+    echo ""
+    echo "Examples:"
+    echo "  ./setup.sh           # Full installation with configuration"
+    echo "  ./setup.sh --update  # Quick update without re-configuration"
+    exit 0
+fi
+
+# Update mode banner
+if [ "$UPDATE_MODE" = true ]; then
+    echo -e "\n${CYAN}============================================================${NC}"
+    echo -e "${CYAN}  UPDATE MODE - Skipping interactive configuration${NC}"
+    echo -e "${CYAN}============================================================${NC}\n"
+fi
+
 # Helper functions
 write_step() {
     echo -e "\n${CYAN}[*] $1${NC}"
@@ -203,7 +240,23 @@ if [ ! -f "$CLAUDE_MD_PATH" ]; then
 else
     # Check if OMCC config already exists
     if grep -qF "$OMCC_MARKER" "$CLAUDE_MD_PATH"; then
-        write_warning "OMCC configuration already exists in CLAUDE.md, skipping"
+        if [ "$UPDATE_MODE" = true ]; then
+            # In update mode, replace existing OMCC config
+            if [ -f "$OMCC_CONFIG_PATH" ]; then
+                # Remove old OMCC config (from marker to end of file or next major section)
+                # Create temp file with content before OMCC marker
+                sed -n "1,/^$OMCC_MARKER/{ /^$OMCC_MARKER/!p }" "$CLAUDE_MD_PATH" > "${CLAUDE_MD_PATH}.tmp"
+                # Append new OMCC config
+                echo "" >> "${CLAUDE_MD_PATH}.tmp"
+                cat "$OMCC_CONFIG_PATH" >> "${CLAUDE_MD_PATH}.tmp"
+                mv "${CLAUDE_MD_PATH}.tmp" "$CLAUDE_MD_PATH"
+                write_success "Updated OMCC configuration in CLAUDE.md"
+            else
+                write_warning "OMCC global prompt template not found at $OMCC_CONFIG_PATH"
+            fi
+        else
+            write_warning "OMCC configuration already exists in CLAUDE.md, skipping"
+        fi
     else
         # Append OMCC config
         if [ -f "$OMCC_CONFIG_PATH" ]; then
@@ -237,8 +290,15 @@ if command -v gemini &> /dev/null; then
     # Copy settings.json if source exists
     if [ -f "$GEMINI_SETTINGS_SOURCE" ]; then
         if [ -f "$GEMINI_SETTINGS_PATH" ]; then
-            write_warning "Gemini settings.json already exists, skipping"
-            write_warning "To update, manually merge: $GEMINI_SETTINGS_SOURCE"
+            if [ "$UPDATE_MODE" = true ]; then
+                # In update mode, backup and replace settings.json
+                cp "$GEMINI_SETTINGS_PATH" "${GEMINI_SETTINGS_PATH}.backup"
+                cp "$GEMINI_SETTINGS_SOURCE" "$GEMINI_SETTINGS_PATH"
+                write_success "Updated Gemini settings.json (backup: ${GEMINI_SETTINGS_PATH}.backup)"
+            else
+                write_warning "Gemini settings.json already exists, skipping"
+                write_warning "To update, manually merge: $GEMINI_SETTINGS_SOURCE"
+            fi
         else
             cp "$GEMINI_SETTINGS_SOURCE" "$GEMINI_SETTINGS_PATH"
             write_success "Installed Gemini settings.json"
@@ -246,24 +306,29 @@ if command -v gemini &> /dev/null; then
     fi
 
     # =========================================================================
-    # Step 6.1: Check MCP dependencies
+    # Step 6.1: Check MCP dependencies (skip in update mode)
     # =========================================================================
-    echo ""
-    echo -e "${CYAN}  Checking MCP dependencies...${NC}"
-
-    # Check npm/npx (required for firecrawl MCP)
-    NPM_AVAILABLE=false
-    if command -v npx &> /dev/null; then
-        NPM_AVAILABLE=true
-        write_success "npx is available (required for firecrawl MCP)"
+    if [ "$UPDATE_MODE" = true ]; then
+        write_success "Update mode: Skipping MCP dependency check and API key configuration"
     else
-        write_warning "npx not found (required for firecrawl MCP)"
-        write_warning "Install Node.js: https://nodejs.org/"
+        echo ""
+        echo -e "${CYAN}  Checking MCP dependencies...${NC}"
+
+        # Check npm/npx (required for firecrawl MCP)
+        NPM_AVAILABLE=false
+        if command -v npx &> /dev/null; then
+            NPM_AVAILABLE=true
+            write_success "npx is available (required for firecrawl MCP)"
+        else
+            write_warning "npx not found (required for firecrawl MCP)"
+            write_warning "Install Node.js: https://nodejs.org/"
+        fi
     fi
 
     # =========================================================================
-    # Step 6.2: Configure API keys for MCP servers
+    # Step 6.2: Configure API keys for MCP servers (skip in update mode)
     # =========================================================================
+    if [ "$UPDATE_MODE" = false ]; then
     echo ""
     echo -e "${CYAN}  Configuring API keys for MCP servers...${NC}"
     echo ""
@@ -467,14 +532,16 @@ EOF
             fi
         fi
     fi
+    fi  # End of UPDATE_MODE check for Step 6.2
 
     # =========================================================================
-    # Step 6.3: Install UI/UX Pro Max skill (optional)
+    # Step 6.3: Install UI/UX Pro Max skill (optional, skip in update mode)
     # =========================================================================
-    echo ""
-    echo -e "${CYAN}  Installing UI/UX Pro Max skill (optional)...${NC}"
+    if [ "$UPDATE_MODE" = false ]; then
+        echo ""
+        echo -e "${CYAN}  Installing UI/UX Pro Max skill (optional)...${NC}"
 
-    if command -v npm &> /dev/null; then
+        if command -v npm &> /dev/null; then
         # Check if uipro is already installed
         if command -v uipro &> /dev/null; then
             write_success "uipro-cli is already installed"
@@ -504,9 +571,10 @@ EOF
             fi
         fi
     else
-        write_warning "npm not found, skipping UI/UX Pro Max skill installation"
-        write_warning "To install manually: npm install -g uipro-cli && uipro init --ai gemini"
-    fi
+            write_warning "npm not found, skipping UI/UX Pro Max skill installation"
+            write_warning "To install manually: npm install -g uipro-cli && uipro init --ai gemini"
+        fi
+    fi  # End of UPDATE_MODE check for Step 6.3
 else
     write_warning "gemini CLI not installed, skipping Gemini configuration"
     write_warning "Frontend/Librarian/Looker agents require Gemini CLI"
@@ -514,64 +582,67 @@ else
 fi
 
 # ==============================================================================
-# Step 7: Configure Coder
+# Step 7: Configure Coder (skip in update mode)
 # ==============================================================================
-write_step "Step 7: Configuring Coder..."
+if [ "$UPDATE_MODE" = true ]; then
+    write_step "Step 7: Skipping Coder configuration (update mode)"
+else
+    write_step "Step 7: Configuring Coder..."
 
-CONFIG_DIR="$HOME/.omcc-mcp"
-CONFIG_PATH="$CONFIG_DIR/config.toml"
+    CONFIG_DIR="$HOME/.omcc-mcp"
+    CONFIG_PATH="$CONFIG_DIR/config.toml"
 
-# Create config directory if it doesn't exist
-mkdir -p "$CONFIG_DIR"
+    # Create config directory if it doesn't exist
+    mkdir -p "$CONFIG_DIR"
 
-# Check if config already exists
-if [ -f "$CONFIG_PATH" ]; then
-    write_warning "Config file already exists at $CONFIG_PATH"
-    read -p "Overwrite? (y/N): " OVERWRITE
-    if [ "$OVERWRITE" != "y" ] && [ "$OVERWRITE" != "Y" ]; then
-        write_warning "Skipping Coder configuration"
-        # Jump to Done
-        echo ""
-        echo -e "${GREEN}============================================================${NC}"
-        write_success "OMCC setup completed successfully!"
-        echo -e "${GREEN}============================================================${NC}"
-        echo ""
-        echo "Next steps:"
-        echo "  1. Restart Claude Code CLI"
-        echo "  2. Verify MCP server: claude mcp list"
-        echo "  3. Check available skills: /omcc-workflow"
-        echo ""
-        exit 0
+    # Check if config already exists
+    if [ -f "$CONFIG_PATH" ]; then
+        write_warning "Config file already exists at $CONFIG_PATH"
+        read -p "Overwrite? (y/N): " OVERWRITE
+        if [ "$OVERWRITE" != "y" ] && [ "$OVERWRITE" != "Y" ]; then
+            write_warning "Skipping Coder configuration"
+            # Jump to Done
+            echo ""
+            echo -e "${GREEN}============================================================${NC}"
+            write_success "OMCC setup completed successfully!"
+            echo -e "${GREEN}============================================================${NC}"
+            echo ""
+            echo "Next steps:"
+            echo "  1. Restart Claude Code CLI"
+            echo "  2. Verify MCP server: claude mcp list"
+            echo "  3. Check available skills: /omcc-workflow"
+            echo ""
+            exit 0
+        fi
     fi
-fi
 
-# Prompt for API Token (hidden input)
-read -s -p "Enter your API Token: " API_TOKEN
-echo
-if [ -z "$API_TOKEN" ]; then
-    write_error "API Token is required"
-    exit 1
-fi
+    # Prompt for API Token (hidden input)
+    read -s -p "Enter your API Token: " API_TOKEN
+    echo
+    if [ -z "$API_TOKEN" ]; then
+        write_error "API Token is required"
+        exit 1
+    fi
 
-# Prompt for Base URL (optional)
-read -p "Enter Base URL (default: https://open.bigmodel.cn/api/anthropic): " BASE_URL
-if [ -z "$BASE_URL" ]; then
-    BASE_URL="https://open.bigmodel.cn/api/anthropic"
-fi
+    # Prompt for Base URL (optional)
+    read -p "Enter Base URL (default: https://open.bigmodel.cn/api/anthropic): " BASE_URL
+    if [ -z "$BASE_URL" ]; then
+        BASE_URL="https://open.bigmodel.cn/api/anthropic"
+    fi
 
-# Prompt for Model (optional)
-read -p "Enter Model (default: glm-4.7): " MODEL
-if [ -z "$MODEL" ]; then
-    MODEL="glm-4.7"
-fi
+    # Prompt for Model (optional)
+    read -p "Enter Model (default: glm-4.7): " MODEL
+    if [ -z "$MODEL" ]; then
+        MODEL="glm-4.7"
+    fi
 
-# Escape special characters for TOML string values (backslash and double quote)
-SAFE_API_TOKEN=$(printf '%s' "$API_TOKEN" | sed 's/\\/\\\\/g; s/"/\\"/g')
-SAFE_BASE_URL=$(printf '%s' "$BASE_URL" | sed 's/\\/\\\\/g; s/"/\\"/g')
-SAFE_MODEL=$(printf '%s' "$MODEL" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    # Escape special characters for TOML string values (backslash and double quote)
+    SAFE_API_TOKEN=$(printf '%s' "$API_TOKEN" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    SAFE_BASE_URL=$(printf '%s' "$BASE_URL" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    SAFE_MODEL=$(printf '%s' "$MODEL" | sed 's/\\/\\\\/g; s/"/\\"/g')
 
-# Generate config.toml
-cat > "$CONFIG_PATH" << EOF
+    # Generate config.toml
+    cat > "$CONFIG_PATH" << EOF
 [coder]
 api_token = "$SAFE_API_TOKEN"
 base_url = "$SAFE_BASE_URL"
@@ -581,10 +652,11 @@ model = "$SAFE_MODEL"
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 EOF
 
-# Set file permissions - only current user can read/write
-chmod 600 "$CONFIG_PATH"
+    # Set file permissions - only current user can read/write
+    chmod 600 "$CONFIG_PATH"
 
-write_success "Coder configuration saved to $CONFIG_PATH"
+    write_success "Coder configuration saved to $CONFIG_PATH"
+fi
 
 # ==============================================================================
 # Done!

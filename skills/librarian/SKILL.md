@@ -1,8 +1,8 @@
 ---
 name: librarian
 description: |
-  Web research agent for documentation, web search, and GitHub search.
-  Use when: querying docs, searching latest tech info, GitHub code/issues search.
+  Web research agent for documentation, web search, and code search.
+  Use when: querying docs, searching latest tech info, code search via grep.app.
   网络研究专家，专注于外部信息检索。
 ---
 
@@ -13,7 +13,7 @@ description: |
 **Librarian** 是网络研究专家，专注于**外部信息检索**：
 - 📖 **文档查询**：查询官方文档和技术资料（context7）
 - 🌐 **网络搜索**：搜索最新技术动态和解决方案（Exa）
-- 🔗 **GitHub 搜索**：搜索外部仓库代码、Issues、PRs
+- 🔗 **代码搜索**：通过 grep.app 搜索开源代码库
 - 📄 **网页抓取**：深度阅读技术文章（firecrawl）
 
 **重要**：本地代码搜索请使用 Claude 的 **Explore 代理**。
@@ -25,7 +25,7 @@ description: |
 | 文档查询 | "React useEffect 的最佳实践" |
 | 网络搜索 | "TypeScript 5.5 的新特性" |
 | 问题诊断 | "为什么 Zod 报这个错误" |
-| GitHub 搜索 | "TanStack Query 的 useQuery 实现" |
+| 代码搜索 | "TanStack Query 的 useQuery 实现" |
 | 外部源码 | "lodash 的 debounce 是如何实现的" |
 
 ## 不适用场景
@@ -57,7 +57,7 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 | **exa** | 网络搜索 | "TypeScript 5.5 新特性" |
 | **open-websearch** | 免费备选搜索 | "DuckDuckGo 搜索某个问题" |
 | **Playwright** | 浏览器自动化 | "抓取需要 JS 渲染的页面" |
-| **github** | GitHub 搜索 | "TanStack Query 的 useQuery 实现" |
+| **grep** | 代码搜索 (grep.app) | "TanStack Query 的 useQuery 实现" |
 | **firecrawl** | 网页抓取 | "深入阅读某篇技术文章" |
 
 ## 请求分类

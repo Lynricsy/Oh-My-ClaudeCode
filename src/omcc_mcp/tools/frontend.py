@@ -288,7 +288,7 @@ FRONTEND_SYSTEM_PROMPT = """# Frontend UI/UX Engineer - 设计师型开发者
 def safe_frontend_command(
     cmd: list[str],
     timeout: int = 180,
-    max_duration: int = 1200,  # 前端任务可能较长
+    max_duration: int = 3600,  # 前端任务可能较长
     prompt: str = "",
     cwd: Optional[Path] = None,
 ) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
@@ -535,7 +535,7 @@ async def frontend_tool(
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     timeout: Annotated[int, "空闲超时（秒），默认 180 秒"] = 180,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 1200 秒（20 分钟）"] = 1200,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时）"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:

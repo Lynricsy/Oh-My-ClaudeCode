@@ -38,7 +38,7 @@
 | 🧠 **专家顾问** | `gemini` | Gemini CLI | 架构设计、第二意见 |
 | 🎨 **前端专家** | `frontend` | Gemini CLI | 界面设计、样式、动效 |
 | 🔧 **杂务执行** | `chore` | OpenCode CLI | 批量重命名、格式化等 |
-| 📚 **网络研究** | `librarian` | Gemini CLI | 文档查询 + 网络搜索 + GitHub 搜索 |
+| 📚 **网络研究** | `librarian` | Gemini CLI | 文档查询 + 网络搜索 + 代码搜索 |
 | 👁️ **多模态分析** | `looker` | Gemini CLI | PDF、图片、图表分析 |
 
 ### 系统架构
@@ -164,6 +164,9 @@ sequenceDiagram
 git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
 cd Oh-My-ClaudeCode
 chmod +x setup.sh && ./setup.sh
+
+# 更新已有安装（跳过交互式配置）
+./setup.sh --update
 ```
 
 **Windows**
@@ -279,7 +282,7 @@ claude mcp remove omcc -s user
 
 ### `librarian` - 网络研究专家
 
-调用 Gemini CLI 进行网络研究（文档查询、网络搜索、GitHub 搜索等）。
+调用 Gemini CLI 进行网络研究（文档查询、网络搜索、代码搜索等）。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
@@ -296,7 +299,7 @@ claude mcp remove omcc -s user
 - `exa`: 网络搜索
 - `open-websearch`: 免费备选搜索（DuckDuckGo/Bing/Brave）
 - `Playwright`: 浏览器自动化（JS 渲染页面）
-- `github`: GitHub 代码/Issues/PRs 搜索
+- `grep`: 代码搜索（grep.app 开源代码搜索）
 - `firecrawl`: 网页内容抓取
 
 **注意**: 本地代码搜索请使用 Claude 的 Explore 代理

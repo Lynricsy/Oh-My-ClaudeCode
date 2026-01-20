@@ -24,7 +24,7 @@ Codex (OpenAI)    →  独立代码审核者（质量把关）
 Gemini (可选)     →  多面手专家（架构设计、第二意见）
 Frontend (Gemini 3 Pro) → 前端/UI 专家（界面设计、样式、动效）
 Chore (OpenCode)  →  杂务执行者（简单重复任务、批量操作）
-Librarian (Gemini 3 Flash) → 网络研究专家（文档查询 + 网络搜索 + GitHub 搜索）
+Librarian (Gemini 3 Flash) → 网络研究专家（文档查询 + 网络搜索 + 代码搜索）
 Looker (Gemini 3 Flash) → 多模态分析专家（PDF/图片/图表分析）
 ```
 
@@ -38,7 +38,7 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 | **exa** | 主力网络搜索（高质量搜索结果） |
 | **open-websearch** | 免费备选搜索（DuckDuckGo/Bing/Brave） |
 | **Playwright** | 浏览器自动化（headless 模式） |
-| **github** | GitHub 搜索（代码示例、issues、PRs） |
+| **grep** | 代码搜索（grep.app 开源代码搜索） |
 | **firecrawl** | 网页抓取（深入阅读网页内容） |
 
 使用场景：

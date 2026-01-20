@@ -331,7 +331,7 @@ Librarian 是只读研究者。以下工具被 **禁止**：
 def safe_librarian_command(
     cmd: list[str],
     timeout: int = 120,  # Librarian 使用更短的超时（快速响应）
-    max_duration: int = 600,  # 最大 10 分钟
+    max_duration: int = 3600,  # 最大 1 小时
     prompt: str = "",
     cwd: Optional[Path] = None,
 ) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
@@ -603,7 +603,7 @@ async def librarian_tool(
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     timeout: Annotated[int, "空闲超时（秒），默认 120 秒"] = 120,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 600 秒"] = 600,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时）"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:

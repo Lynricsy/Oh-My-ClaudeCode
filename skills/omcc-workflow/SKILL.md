@@ -15,7 +15,7 @@ description: |
 - **Codex**：审核者 + 高级代码顾问
 - **Gemini**：高阶顾问（架构设计、第二意见）→ 详见 `/gemini-collaboration`
 - **Frontend**：**前端/UI 专家**（界面设计、样式、动效）
-- **Librarian**：网络研究专家（文档查询 + 网络搜索 + GitHub 搜索）
+- **Librarian**：网络研究专家（文档查询 + 网络搜索 + 代码搜索）
 - **Looker**：多模态分析专家（PDF/图片/图表分析）
 
 ## 任务拆分原则（分发给 Coder）
@@ -85,7 +85,7 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 | **exa** | 网络搜索 | "TypeScript 5.5 新特性" |
 | **open-websearch** | 免费备选搜索 | "DuckDuckGo 搜索某个问题" |
 | **Playwright** | 浏览器自动化 | "抓取需要 JS 渲染的页面" |
-| **github** | GitHub 搜索 | "TanStack Query 的 useQuery 实现" |
+| **grep** | 代码搜索 (grep.app) | "TanStack Query 的 useQuery 实现" |
 | **firecrawl** | 网页抓取 | "深入阅读某篇技术文章" |
 
 | 请求类型 | 触发词 | 示例 |

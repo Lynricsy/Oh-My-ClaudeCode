@@ -70,7 +70,7 @@ async def coder(
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     timeout: Annotated[int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"] = 300,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 1800 秒（30 分钟），0 表示无限制"] = 1800,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时），0 表示无限制"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 0（Coder 有写入副作用，默认不重试）"] = 0,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -153,7 +153,7 @@ async def codex(
         "从 ~/.codex/config.toml 加载的配置文件名称",
     ] = "",
     timeout: Annotated[int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"] = 300,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 1800 秒（30 分钟），0 表示无限制"] = 1800,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 7200 秒（2 小时），0 表示无限制"] = 7200,
     max_retries: Annotated[int, "最大重试次数，默认 1（Codex 只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -228,7 +228,7 @@ async def gemini(
         Field(description="指定模型版本，默认使用 gemini-3-pro-preview"),
     ] = "",
     timeout: Annotated[int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"] = 300,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 1800 秒（30 分钟），0 表示无限制"] = 1800,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时），0 表示无限制"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -257,7 +257,7 @@ async def gemini(
     **角色定位**：网络研究专家
     - 📖 文档查询：查询官方文档和技术资料（context7）
     - 🌐 网络搜索：搜索最新技术动态和解决方案（Exa）
-    - 🔗 GitHub 搜索：搜索外部仓库代码、Issues、PRs
+    - 🔗 代码搜索：通过 grep.app 搜索开源代码库
     - 📄 网页抓取：深度阅读技术文章（firecrawl）
 
     **请求分类**：
@@ -304,7 +304,7 @@ async def librarian(
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     timeout: Annotated[int, "空闲超时（秒），默认 120 秒（Librarian 追求快速响应）"] = 120,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 600 秒（10 分钟）"] = 600,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时）"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1（只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -376,7 +376,7 @@ async def looker(
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     timeout: Annotated[int, "空闲超时（秒），默认 120 秒"] = 120,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 300 秒（5 分钟）"] = 300,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时）"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1（只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -453,7 +453,7 @@ async def frontend(
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     timeout: Annotated[int, "空闲超时（秒），默认 180 秒"] = 180,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 1200 秒（20 分钟）"] = 1200,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时）"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -524,7 +524,7 @@ async def chore(
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     timeout: Annotated[int, "空闲超时（秒），默认 120 秒"] = 120,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 600 秒（10 分钟）"] = 600,
+    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时）"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 0（杂务任务通常不重试）"] = 0,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:

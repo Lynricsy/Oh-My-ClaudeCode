@@ -147,7 +147,7 @@ class MetricsCollector:
 def run_codex_command(
     cmd: list[str],
     timeout: int = 300,
-    max_duration: int = 1800,
+    max_duration: int = 7200,
     prompt: str = "",
 ) -> Generator[str, None, tuple[Optional[int], int]]:
     """执行 Codex 命令并流式返回输出
@@ -319,7 +319,7 @@ def run_codex_command(
 def safe_codex_command(
     cmd: list[str],
     timeout: int = 300,
-    max_duration: int = 1800,
+    max_duration: int = 7200,
     prompt: str = "",
 ) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
     """安全执行 Codex 命令的上下文管理器
@@ -655,8 +655,8 @@ async def codex_tool(
     ] = 300,
     max_duration: Annotated[
         int,
-        Field(description="总时长硬上限（秒），默认 1800 秒（30 分钟），0 表示无限制"),
-    ] = 1800,
+        Field(description="总时长硬上限（秒），默认 7200 秒（2 小时），0 表示无限制"),
+    ] = 7200,
     max_retries: Annotated[int, "最大重试次数，默认 1（Codex 只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
