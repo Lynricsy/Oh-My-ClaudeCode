@@ -1,7 +1,7 @@
 """Frontend UI/UX Engineer 工具实现
 
 专注于前端/UI 开发的子代理。
-基于 OpenCode CLI，使用 Gemini 3 Pro 模型。
+基于 OpenCode CLI，使用 Advisor 3 Pro 模型。
 
 主要功能：
 - 界面设计和布局实现
@@ -285,7 +285,7 @@ FRONTEND_SYSTEM_PROMPT = """# Frontend UI/UX Engineer - 设计师型开发者
 如果任务涉及非前端代码、外部研究或架构决策，请求主代理（Claude）路由到适当的代理：
 - 代码实现（设计完成后） → Coder
 - 外部研究 → Librarian
-- 架构决策 → Codex/Gemini
+- 架构决策 → Reviewer/Advisor
 
 ---
 
@@ -574,7 +574,7 @@ async def frontend_tool(
     - ✨ UI 审查和改进
 
     **特点**：
-    - 使用 Gemini 3 Pro 模型
+    - 使用 Advisor 3 Pro 模型
     - 设计师视角：关注间距、色彩、微交互
     - 支持多技术栈：React/Vue/Svelte/HTML+Tailwind
 
@@ -604,7 +604,7 @@ async def frontend_tool(
     cmd = ["opencode", "run"]
     cmd.extend(["--format", "json"])
 
-    # 使用配置的模型（默认 Gemini 3 Pro）
+    # 使用配置的模型（默认 Advisor 3 Pro）
     from omcc_mcp.config import get_agent_model
     model_to_use = get_agent_model("frontend")
     if model_to_use:

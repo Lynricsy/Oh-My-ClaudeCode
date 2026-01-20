@@ -16,7 +16,7 @@ authors = [
     { name = "OMCC-MCP Contributors" },
 ]
 license = { text = "MIT" }
-keywords = ["mcp", "fastmcp", "coder", "codex", "gemini", "claude", "opencode"]
+keywords = ["mcp", "fastmcp", "coder", "reviewer", "advisor", "claude", "opencode"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",

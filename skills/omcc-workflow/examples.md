@@ -11,7 +11,7 @@
 **流程**：
 1. Claude 拆解需求，明确接口列表
 2. 调用 Coder 批量生成代码
-3. 确认结果，调用 Codex review
+3. 确认结果，调用 Reviewer review
 4. 根据 review 结果迭代
 
 ### ❌ 简陋示例（容易失败）
@@ -77,7 +77,7 @@ SESSION_ID: ""  # 新会话
 **流程**：
 1. Claude 分析问题，定位原因（token 过期后没有自动刷新）
 2. 调用 Coder 修复代码
-3. 调用 Codex review 修复质量
+3. 调用 Reviewer review 修复质量
 
 ### ❌ 简陋示例（容易失败）
 
@@ -181,7 +181,7 @@ sandbox: read-only
 SESSION_ID: "abc-123"  # 复用上一步 Coder 的会话
 ```
 
-**注意**：若之前调用过 Coder 生成代码，建议复用同一 SESSION_ID，让 Codex 了解完整上下文。
+**注意**：若之前调用过 Coder 生成代码，建议复用同一 SESSION_ID，让 Reviewer 了解完整上下文。
 
 ---
 
@@ -248,7 +248,7 @@ cd: /project
 SESSION_ID: ""
 ```
 
-### 第 3 步：审核（使用 Codex）
+### 第 3 步：审核（使用 Reviewer）
 
 ```markdown
 PROMPT: |

@@ -1,7 +1,7 @@
-"""Gemini 工具实现
+"""Advisor 工具实现
 
 调用 OpenCode CLI 进行代码执行、技术咨询或代码审核。
-Gemini 是多面手，权限灵活，由 Claude 按场景控制。
+Advisor 是多面手，权限灵活，由 Claude 按场景控制。
 
 后端：OpenCode CLI (https://opencode.ai)
 """
@@ -435,7 +435,7 @@ def _is_auth_error(text: str) -> bool:
 def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
     """判断错误是否可以重试
 
-    Gemini 默认允许重试，排除：命令不存在（需要用户干预）、认证错误（需要用户配置）
+    Advisor 默认允许重试，排除：命令不存在（需要用户干预）、认证错误（需要用户配置）
     """
     if error_kind == ErrorKind.COMMAND_NOT_FOUND:
         return False
@@ -449,7 +449,7 @@ def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
 # 主工具函数
 # ============================================================================
 
-async def gemini_tool(
+async def advisor_tool(
     PROMPT: Annotated[str, "任务指令，需提供充分背景信息"],
     cd: Annotated[Path, "工作目录"],
     sandbox: Annotated[
@@ -474,17 +474,17 @@ async def gemini_tool(
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
-    """执行 Gemini 任务
+    """执行 Advisor 任务
 
     调用 OpenCode CLI 进行代码执行、技术咨询或代码审核。
 
-    **角色定位**：多面手（与 Claude、Codex 同等级别的顶级 AI 专家）
+    **角色定位**：多面手（与 Claude、Reviewer 同等级别的顶级 AI 专家）
     - 🧠 高阶顾问：架构设计、技术选型、复杂方案讨论
     - ⚖️ 独立审核：代码 Review、方案评审、质量把关
     - 🔨 代码执行：原型开发、功能实现（尤其擅长前端/UI）
 
     **使用场景**：
-    - 用户明确要求使用 Gemini
+    - 用户明确要求使用 Advisor
     - 需要第二意见或独立视角
     - 架构设计和技术讨论
     - 前端/UI 原型开发
@@ -493,7 +493,7 @@ async def gemini_tool(
     **重试策略**：默认允许 1 次重试
     """
     # 初始化指标收集器
-    metrics = MetricsCollector(tool="gemini", prompt=PROMPT, sandbox=sandbox)
+    metrics = MetricsCollector(tool="advisor", prompt=PROMPT, sandbox=sandbox)
 
     # 构建 opencode run 命令
     # opencode run --format json --model provider/model message
@@ -502,7 +502,7 @@ async def gemini_tool(
 
     # 指定模型（优先级：参数 > 配置文件 > 默认值）
     from omcc_mcp.config import get_agent_model
-    model_to_use = model if model else get_agent_model("gemini")
+    model_to_use = model if model else get_agent_model("advisor")
     if model_to_use:
         cmd.extend(["--model", model_to_use])
 
@@ -602,7 +602,7 @@ async def gemini_tool(
                         if event_type == "error":
                             had_error = True
                             error_msg = line_dict.get("message", str(line_dict))
-                            err_message += "\n\n[gemini error] " + error_msg
+                            err_message += "\n\n[advisor error] " + error_msg
                             if _is_auth_error(error_msg):
                                 error_kind = ErrorKind.AUTH_REQUIRED
                             elif error_kind != ErrorKind.AUTH_REQUIRED:
@@ -632,7 +632,7 @@ async def gemini_tool(
 
             result: Dict[str, Any] = {
                 "success": False,
-                "tool": "gemini",
+                "tool": "advisor",
                 "error": str(e),
                 "error_kind": ErrorKind.COMMAND_NOT_FOUND,
                 "error_detail": _build_error_detail(str(e)),
@@ -679,7 +679,7 @@ async def gemini_tool(
             success = False
             if not error_kind:
                 error_kind = ErrorKind.EMPTY_RESULT
-            err_message = "未能获取 Gemini 响应内容。可尝试设置 return_all_messages=True 获取详细信息。\n\n" + err_message
+            err_message = "未能获取 Advisor 响应内容。可尝试设置 return_all_messages=True 获取详细信息。\n\n" + err_message
 
         # 检查退出码
         if exit_code is not None and exit_code != 0 and success:
@@ -730,7 +730,7 @@ async def gemini_tool(
     if success:
         result = {
             "success": True,
-            "tool": "gemini",
+            "tool": "advisor",
             "SESSION_ID": session_id,
             "result": agent_messages,
             "duration": metrics.format_duration(),
@@ -756,7 +756,7 @@ async def gemini_tool(
 
         result = {
             "success": False,
-            "tool": "gemini",
+            "tool": "advisor",
             "error": err_message,
             "error_kind": error_kind,
             "error_detail": _build_error_detail(

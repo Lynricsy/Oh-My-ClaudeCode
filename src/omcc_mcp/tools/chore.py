@@ -196,10 +196,10 @@ CHORE_SYSTEM_PROMPT = """# CHORE - 杂务执行者
 ## 不适合的任务
 
 这些任务应该使用其他代理：
-- 需要创意设计 → Frontend/Gemini
-- 需要架构决策 → Codex/Gemini
+- 需要创意设计 → Frontend/Advisor
+- 需要架构决策 → Reviewer/Advisor
 - 复杂代码实现 → Coder
-- 代码审查 → Codex
+- 代码审查 → Reviewer
 - 深度研究 → Librarian
 
 ---
@@ -498,7 +498,7 @@ async def chore_tool(
 
     **不适合**：
     - 需要创意设计 → Frontend
-    - 需要架构决策 → Codex/Gemini
+    - 需要架构决策 → Reviewer/Advisor
     - 复杂代码实现 → Coder
 
     **Prompt 模板**：

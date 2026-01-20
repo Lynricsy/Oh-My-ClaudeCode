@@ -5,7 +5,7 @@
 
 支持配置：
 - coder: claude CLI 后端配置（API Token, Base URL, Model）
-- gemini/frontend/librarian/looker: Gemini CLI 模型配置
+- advisor/frontend/librarian/looker: OpenCode CLI 模型配置
 - chore: OpenCode 模型配置
 """
 
@@ -28,10 +28,10 @@ class ConfigError(Exception):
 
 DEFAULT_MODELS = {
     "coder": "glm-4.7",                          # Coder 默认使用 GLM-4.7
-    "gemini": "google/gemini-3-pro-preview",     # Gemini 默认模型 (OpenCode 格式)
-    "frontend": "google/gemini-3-pro-preview",   # Frontend 默认使用 Gemini 3 Pro
-    "librarian": "google/gemini-3-flash-preview", # Librarian 默认使用 Gemini 3 Flash
-    "looker": "google/gemini-3-flash-preview",   # Looker 默认使用 Gemini 3 Flash
+    "advisor": "google/advisor-3-pro-preview",     # Advisor 默认模型 (OpenCode 格式)
+    "frontend": "google/advisor-3-pro-preview",   # Frontend 默认使用 Advisor 3 Pro
+    "librarian": "google/advisor-3-flash-preview", # Librarian 默认使用 Advisor 3 Flash
+    "looker": "google/advisor-3-flash-preview",   # Looker 默认使用 Advisor 3 Flash
     "chore": None,                               # Chore 使用 OpenCode 默认模型
 }
 
@@ -84,7 +84,7 @@ def get_agent_model(agent: str, config: dict[str, Any] | None = None) -> str | N
     """获取代理的模型配置
 
     Args:
-        agent: 代理名称 (coder, gemini, frontend, librarian, looker, chore)
+        agent: 代理名称 (coder, advisor, frontend, librarian, looker, chore)
         config: 配置字典，如果为 None 则自动加载
 
     Returns:
@@ -156,19 +156,19 @@ extended_context = false  # 是否启用 1m 扩展上下文（通过 [1m] 后缀
 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 
 # ============================================================================
-# Gemini CLI 相关代理模型配置
+# OpenCode CLI 相关代理模型配置
 # ============================================================================
-[gemini]
-model = "gemini-3-pro"  # Gemini 默认模型
+[advisor]
+model = "advisor-3-pro"  # Advisor 默认模型
 
 [frontend]
-model = "gemini-3-pro"  # Frontend 前端/UI 代理
+model = "advisor-3-pro"  # Frontend 前端/UI 代理
 
 [librarian]
-model = "gemini-3-flash"  # Librarian 研究代理（快速、低成本）
+model = "advisor-3-flash"  # Librarian 研究代理（快速、低成本）
 
 [looker]
-model = "gemini-3-flash"  # Looker 多模态代理（快速、低成本）
+model = "advisor-3-flash"  # Looker 多模态代理（快速、低成本）
 
 # ============================================================================
 # OpenCode 相关代理配置

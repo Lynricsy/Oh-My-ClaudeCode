@@ -23,8 +23,8 @@
 | 维度 | 说明 |
 | :--- | :--- |
 | **🧠 成本优化** | Claude 负责思考与调度（贵但强），Coder 负责代码执行（量大管饱） |
-| **🧩 能力互补** | Claude 补足 Coder 创造力短板，Codex 提供独立审核视角，Gemini 提供多元化专家意见 |
-| **🛡️ 质量保障** | 双重审核机制：Claude 初审 + Codex 终审 |
+| **🧩 能力互补** | Claude 补足 Coder 创造力短板，Reviewer 提供独立审核视角，Advisor 提供多元化专家意见 |
+| **🛡️ 质量保障** | 双重审核机制：Claude 初审 + Reviewer 终审 |
 | **🔄 全自动闭环** | 拆解 → 执行 → 审核 → 重试，最大程度减少人工干预 |
 | **🔗 上下文保持** | SESSION_ID 会话复用机制确保多轮协作上下文连贯 |
 | **📚 专业分工** | Frontend 专注 UI/UX、Librarian 专注网络研究、Looker 专注多模态分析 |
@@ -35,8 +35,8 @@
 |------|------|------|------|
 | 👑 **架构师** | Claude | - | 需求分析、任务拆解、最终决策 |
 | 🔨 **执行者** | `coder` | Claude CLI + 可配置后端 | 代码生成、修改、批量任务 |
-| ⚖️ **审核官** | `codex` | Codex CLI (OpenAI) | 独立代码审核、架构咨询 |
-| 🧠 **专家顾问** | `gemini` | OpenCode CLI | 架构设计、第二意见 |
+| ⚖️ **审核官** | `reviewer` | Reviewer CLI (OpenAI) | 独立代码审核、架构咨询 |
+| 🧠 **专家顾问** | `advisor` | OpenCode CLI | 架构设计、第二意见 |
 | 🎨 **前端专家** | `frontend` | OpenCode CLI | 界面设计、样式、动效 |
 | 🔧 **杂务执行** | `chore` | OpenCode CLI | 批量重命名、格式化等 |
 | 📚 **网络研究** | `librarian` | OpenCode CLI | 文档查询 + 网络搜索 + 代码搜索 |
@@ -60,7 +60,7 @@ graph TB
             Chore[🔧 Chore<br/>OpenCode CLI]
         end
         subgraph "专家咨询"
-            Gemini[🧠 Gemini<br/>架构设计 / 第二意见]
+            Advisor[🧠 Advisor<br/>架构设计 / 第二意见]
             Frontend[🎨 Frontend<br/>UI/UX 专家]
         end
         subgraph "信息获取"
@@ -70,28 +70,28 @@ graph TB
     end
 
     subgraph "⚖️ 审核层"
-        Codex[⚖️ Codex<br/>OpenAI 独立审核]
+        Reviewer[⚖️ Reviewer<br/>OpenAI 独立审核]
     end
 
     User -->|需求| Claude
     Claude -->|任务分发| Coder
     Claude -->|杂务任务| Chore
-    Claude -->|技术咨询| Gemini
+    Claude -->|技术咨询| Advisor
     Claude -->|前端任务| Frontend
     Claude -->|网络研究| Librarian
     Claude -->|文件分析| Looker
     Coder -->|执行结果| Claude
     Chore -->|执行结果| Claude
-    Gemini -->|专家意见| Claude
+    Advisor -->|专家意见| Claude
     Frontend -->|前端方案| Claude
     Librarian -->|研究结果| Claude
     Looker -->|分析报告| Claude
-    Claude -->|代码审核| Codex
-    Codex -->|审核意见| Claude
+    Claude -->|代码审核| Reviewer
+    Reviewer -->|审核意见| Claude
     Claude -->|最终结果| User
 
     style Claude fill:#f9f,stroke:#333,stroke-width:3px
-    style Codex fill:#ff9,stroke:#333,stroke-width:2px
+    style Reviewer fill:#ff9,stroke:#333,stroke-width:2px
     style User fill:#9ff,stroke:#333,stroke-width:2px
 ```
 
@@ -103,8 +103,8 @@ sequenceDiagram
     participant U as 👤 用户
     participant C as 👑 Claude
     participant Co as 🔨 Coder
-    participant Cx as ⚖️ Codex
-    participant G as 🧠 Gemini
+    participant Cx as ⚖️ Reviewer
+    participant G as 🧠 Advisor
 
     U->>C: 提交需求
 
@@ -154,7 +154,7 @@ sequenceDiagram
 |------|----------|------|
 | [uv](https://docs.astral.sh/uv/) | - | Python 包管理器 |
 | [Claude Code](https://claude.ai/code) | ≥ v2.0.56 | 主框架 |
-| [Codex CLI](https://developers.openai.com/codex/quickstart) | ≥ v0.61.0 | 代码审核 |
+| [Reviewer CLI](https://developers.openai.com/reviewer/quickstart) | ≥ v0.61.0 | 代码审核 |
 | [OpenCode](https://opencode.ai) | 推荐 | 专家咨询/前端/网络研究/多模态/杂务 |
 
 ### ⚡ 一键安装
@@ -218,9 +218,9 @@ claude mcp remove omcc -s user
 | `max_retries` | int | | `0` | 最大重试次数 |
 | `return_metrics` | bool | | `false` | 返回性能指标 |
 
-### `codex` - 代码审核官
+### `reviewer` - 代码审核官
 
-调用 OpenAI Codex 进行独立代码审查。
+调用 OpenAI Reviewer 进行独立代码审查。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
@@ -233,7 +233,7 @@ claude mcp remove omcc -s user
 | `timeout` | int | | `300` | 空闲超时（秒） |
 | `max_retries` | int | | `1` | 最大重试次数 |
 
-### `gemini` - 多面手专家
+### `advisor` - 多面手专家
 
 调用 OpenCode CLI 进行技术咨询或代码执行。
 
@@ -372,17 +372,17 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 
 # OpenCode CLI 代理模型配置
 # 模型格式为 provider/model，需要在 ~/.config/opencode/opencode.jsonc 中配置 provider
-[gemini]
-model = "google/gemini-3-pro-preview"
+[advisor]
+model = "google/advisor-3-pro-preview"
 
 [frontend]
-model = "google/gemini-3-pro-preview"
+model = "google/advisor-3-pro-preview"
 
 [librarian]
-model = "google/gemini-3-flash-preview"
+model = "google/advisor-3-flash-preview"
 
 [looker]
-model = "google/gemini-3-flash-preview"
+model = "google/advisor-3-flash-preview"
 
 # Chore 杂务代理
 [chore]
@@ -424,7 +424,7 @@ model = "anthropic/claude-sonnet-4-20250514"
 # macOS/Linux
 mkdir -p ~/.claude/skills
 cp -r skills/omcc-workflow ~/.claude/skills/
-cp -r skills/gemini-collaboration ~/.claude/skills/
+cp -r skills/advisor-collaboration ~/.claude/skills/
 cp -r skills/frontend ~/.claude/skills/
 cp -r skills/chore ~/.claude/skills/
 cp -r skills/librarian ~/.claude/skills/
@@ -432,7 +432,7 @@ cp -r skills/looker ~/.claude/skills/
 
 # Windows (PowerShell)
 xcopy /E /I "skills\omcc-workflow" "$env:USERPROFILE\.claude\skills\omcc-workflow"
-xcopy /E /I "skills\gemini-collaboration" "$env:USERPROFILE\.claude\skills\gemini-collaboration"
+xcopy /E /I "skills\advisor-collaboration" "$env:USERPROFILE\.claude\skills\advisor-collaboration"
 xcopy /E /I "skills\frontend" "$env:USERPROFILE\.claude\skills\frontend"
 xcopy /E /I "skills\chore" "$env:USERPROFILE\.claude\skills\chore"
 xcopy /E /I "skills\librarian" "$env:USERPROFILE\.claude\skills\librarian"
@@ -448,8 +448,8 @@ xcopy /E /I "skills\looker" "$env:USERPROFILE\.claude\skills\looker"
   "permissions": {
     "allow": [
       "mcp__omcc__coder",
-      "mcp__omcc__codex",
-      "mcp__omcc__gemini",
+      "mcp__omcc__reviewer",
+      "mcp__omcc__advisor",
       "mcp__omcc__frontend",
       "mcp__omcc__chore",
       "mcp__omcc__librarian",
@@ -472,13 +472,13 @@ uv run omcc-mcp
 
 - [FastMCP](https://github.com/jlowin/fastmcp) - MCP 框架
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) - 主框架文档
-- [Codex CLI](https://developers.openai.com/codex/quickstart) - 代码审核
+- [Reviewer CLI](https://developers.openai.com/reviewer/quickstart) - 代码审核
 - [OpenCode](https://opencode.ai) - 专家咨询/前端/网络研究/多模态
 - [智谱 AI](https://open.bigmodel.cn) - GLM-4.7 推荐后端
 
 ## 🙏 致谢
 
-- **[Coder-Codex-Gemini](https://github.com/FredericMN/Coder-Codex-Gemini)** - 本项目的核心灵感来源，提供了 Claude + Coder + Codex + Gemini 多模型协作的架构设计与实现参考
+- **[Coder-Reviewer-Advisor](https://github.com/FredericMN/Coder-Reviewer-Advisor)** - 本项目的核心灵感来源，提供了 Claude + Coder + Reviewer + Advisor 多模型协作的架构设计与实现参考
 - **[Amp](https://ampcode.com/)** - Sourcegraph 开发的前沿 AI 编码代理，其终端优先的设计理念和代理式编码实践为本项目提供了宝贵启发
 
 ## 📄 License

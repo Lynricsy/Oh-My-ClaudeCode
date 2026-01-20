@@ -12,8 +12,8 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import Field
 
 from omcc_mcp.tools.coder import coder_tool
-from omcc_mcp.tools.codex import codex_tool
-from omcc_mcp.tools.gemini import gemini_tool
+from omcc_mcp.tools.reviewer import reviewer_tool
+from omcc_mcp.tools.advisor import advisor_tool
 from omcc_mcp.tools.librarian import librarian_tool
 from omcc_mcp.tools.looker import looker_tool
 from omcc_mcp.tools.frontend import frontend_tool
@@ -90,45 +90,62 @@ async def coder(
 
 
 @mcp.tool(
-    name="codex",
+    name="reviewer",
     description="""
-    调用 Codex 进行代码审核。
+    调用 Reviewer (Codex CLI) 进行代码审核和任务验收。
 
-    **角色定位**：代码审核者
+    **角色定位**：代码审核者 + 任务验收者
     - 检查代码质量（可读性、可维护性、潜在 bug）
-    - 评估需求完成度
+    - 验证任务完整性（需求是否完整实现、是否与目标对齐）
+    - 运行单元测试验证功能正确性
     - 给出明确结论：✅ 通过 / ⚠️ 建议优化 / ❌ 需要修改
 
+    **核心职责**：
+    1. **代码质量审核**：可读性、可维护性、代码规范
+    2. **任务完成度验证**：需求是否完整实现、边界情况是否覆盖
+    3. **对齐性检查**：实现是否与原始需求/设计文档一致
+    4. **测试验证**：运行相关单元测试（如 npm test、pytest 等）
+
     **使用场景**：
-    - Coder 完成代码后，调用 Codex 进行质量审核
+    - Coder 完成代码后，调用 Reviewer 进行质量审核
     - 需要独立第三方视角时
     - 代码合入前的最终检查
+    - 验证任务是否完整完成
 
-    **注意**：Codex 仅审核，严禁修改代码，默认 sandbox 为 read-only
+    **注意**：
+    - Reviewer 可以读取文件和运行测试命令
+    - 严禁修改、创建或删除代码文件（提示词约束）
+    - 默认 sandbox 为 workspace-write（以便运行测试）
+    - 测试产生的临时文件/缓存可以写入
 
     **Prompt 模板**：
     ```
     请 review 以下代码改动：
     **改动文件**：[文件列表]
     **改动目的**：[简要描述]
+    **原始需求**：[需求描述]
+
     **请检查**：
     1. 代码质量（可读性、可维护性）
     2. 潜在 Bug 或边界情况
-    3. 需求完成度
+    3. 任务完成度（需求是否完整实现）
+    4. 对齐性（实现是否与需求一致）
+    5. 运行相关测试命令：[测试命令]
+
     **请给出明确结论**：
-    - ✅ 通过：代码质量良好，可以合入
+    - ✅ 通过：代码质量良好，任务完整完成
     - ⚠️ 建议优化：[具体建议]
     - ❌ 需要修改：[具体问题]
     ```
     """,
 )
-async def codex(
+async def reviewer(
     PROMPT: Annotated[str, "审核任务描述"],
     cd: Annotated[Path, "工作目录"],
     sandbox: Annotated[
         Literal["read-only", "workspace-write", "danger-full-access"],
-        Field(description="沙箱策略，默认只读"),
-    ] = "read-only",
+        Field(description="沙箱策略，默认允许写工作区（以便运行测试）"),
+    ] = "workspace-write",
     SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
     skip_git_repo_check: Annotated[
         bool,
@@ -142,7 +159,7 @@ async def codex(
     ] = None,
     model: Annotated[
         str,
-        Field(description="指定模型，默认使用 Codex 自己的配置"),
+        Field(description="指定模型，默认使用 Reviewer 自己的配置"),
     ] = "",
     yolo: Annotated[
         bool,
@@ -150,13 +167,13 @@ async def codex(
     ] = False,
     profile: Annotated[
         str,
-        "从 ~/.codex/config.toml 加载的配置文件名称",
+        "从 ~/.reviewer/config.toml 加载的配置文件名称",
     ] = "",
-    max_retries: Annotated[int, "最大重试次数，默认 1（Codex 只读可安全重试）"] = 1,
+    max_retries: Annotated[int, "最大重试次数，默认 1（Reviewer 只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
-    """执行 Codex 代码审核"""
-    return await codex_tool(
+    """执行 Reviewer 代码审核"""
+    return await reviewer_tool(
         PROMPT=PROMPT,
         cd=cd,
         sandbox=sandbox,
@@ -174,22 +191,22 @@ async def codex(
 
 
 @mcp.tool(
-    name="gemini",
+    name="advisor",
     description="""
-    调用 Gemini CLI 进行代码执行、技术咨询或代码审核。
+    调用 Advisor (OpenCode CLI) 进行代码执行、技术咨询或代码审核。
 
-    **角色定位**：多面手（与 Claude、Codex 同等级别的顶级 AI 专家）
+    **角色定位**：多面手（与 Claude、Reviewer 同等级别的顶级 AI 专家）
     - 高阶顾问：架构设计、技术选型、复杂方案讨论
     - 独立审核：代码 Review、方案评审、质量把关
     - 代码执行：原型开发、功能实现（尤其擅长前端/UI）
 
     **使用场景**：
-    - 用户明确要求使用 Gemini
+    - 用户明确要求使用 Advisor
     - 需要第二意见或独立视角
     - 架构设计和技术讨论
     - 前端/UI 原型开发
 
-    **注意**：Gemini 权限灵活，默认 yolo=true，由 Claude 按场景控制
+    **注意**：Advisor 权限灵活，默认 yolo=true，由 Claude 按场景控制
     **重试策略**：默认允许 1 次重试
 
     **Prompt 模板**：
@@ -205,7 +222,7 @@ async def codex(
     ```
     """,
 )
-async def gemini(
+async def advisor(
     PROMPT: Annotated[str, "任务指令，需提供充分背景信息"],
     cd: Annotated[Path, "工作目录"],
     sandbox: Annotated[
@@ -224,8 +241,8 @@ async def gemini(
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
-    """执行 Gemini 任务"""
-    return await gemini_tool(
+    """执行 Advisor 任务"""
+    return await advisor_tool(
         PROMPT=PROMPT,
         cd=cd,
         sandbox=sandbox,
@@ -266,9 +283,9 @@ async def gemini(
     - "为什么 Zod 报这个错误"
 
     **特点**：
-    - 使用 gemini-3-flash 模型（快速、低成本）
+    - 使用 advisor-3-flash 模型（快速、低成本）
     - 默认只读模式，不会修改代码
-    - 通过 Gemini CLI 配置的 MCP 提供研究能力
+    - 通过 OpenCode CLI 配置的 MCP 提供研究能力
 
     **注意**：
     - Librarian 专注于外部信息检索，不负责本地代码库搜索
@@ -342,7 +359,7 @@ async def librarian(
     - 需要后续编辑的文件（需要从 Read 获取字面内容）
 
     **特点**：
-    - 使用 gemini-3-flash 模型（擅长多模态分析）
+    - 使用 advisor-3-flash 模型（擅长多模态分析）
     - 默认只读模式，不会修改文件
     - 节省主代理上下文 token
 
@@ -411,11 +428,11 @@ async def looker(
 
     **不适合使用**：
     - 非前端代码实现（使用 Coder）
-    - 代码审查（使用 Codex）
+    - 代码审查（使用 Reviewer）
     - 外部研究（使用 Librarian）
 
     **特点**：
-    - 使用 gemini-3-pro 模型（强创意和代码能力）
+    - 使用 advisor-3-pro 模型（强创意和代码能力）
     - 设计师视角：关注间距、色彩、微交互
     - 支持多技术栈：React/Vue/Svelte/HTML+Tailwind
 
@@ -488,7 +505,7 @@ async def frontend(
 
     **不适合使用**：
     - 需要创意设计（使用 Frontend）
-    - 需要架构决策（使用 Codex/Gemini）
+    - 需要架构决策（使用 Reviewer/Advisor）
     - 复杂代码实现（使用 Coder）
 
     **特点**：

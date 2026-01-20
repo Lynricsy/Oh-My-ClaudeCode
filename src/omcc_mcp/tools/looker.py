@@ -1,7 +1,7 @@
 """Looker 工具实现
 
 多模态分析代理，用于分析 PDF、图片、图表等媒体文件。
-基于 OpenCode CLI，使用 Gemini 3 Flash 模型（擅长多模态分析）。
+基于 OpenCode CLI，使用 Advisor 3 Flash 模型（擅长多模态分析）。
 
 主要功能：
 - 分析 PDF 文档，提取文本和结构
@@ -504,7 +504,7 @@ async def looker_tool(
     - 📸 截图分析：识别错误信息、UI 状态
 
     **特点**：
-    - 使用 Gemini 3 Flash 模型，擅长多模态分析
+    - 使用 Advisor 3 Flash 模型，擅长多模态分析
     - 默认只读模式，不会修改文件
     - 节省主代理上下文 token
 
@@ -550,7 +550,7 @@ async def looker_tool(
     cmd = ["opencode", "run"]
     cmd.extend(["--format", "json"])
 
-    # 使用配置的模型（默认 Gemini 3 Flash，擅长多模态）
+    # 使用配置的模型（默认 Advisor 3 Flash，擅长多模态）
     from omcc_mcp.config import get_agent_model
     model_to_use = get_agent_model("looker")
     if model_to_use:

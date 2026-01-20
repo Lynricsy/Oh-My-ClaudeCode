@@ -123,8 +123,8 @@ Frontend 专注于 **UI/UX 实现**，以下任务应路由到其他代理：
 | 任务 | 路由 |
 |------|------|
 | 后端逻辑实现 | Coder |
-| 代码审查 | Codex |
-| 架构设计 | Gemini |
+| 代码审查 | Reviewer |
+| 架构设计 | Advisor |
 | 代码搜索 | Librarian |
 
 ## 会话复用

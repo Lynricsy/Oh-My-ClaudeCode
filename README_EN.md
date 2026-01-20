@@ -1,4 +1,4 @@
-# Coder-Codex-Gemini (OMCC)
+# Coder-Reviewer-Advisor (OMCC)
 
 <div align="center">
 
@@ -9,9 +9,9 @@
 
 [中文文档](README.md)
 
-**Claude + Coder + Codex + Gemini Multi-Model Collaboration Framework**
+**Claude + Coder + Reviewer + Advisor Multi-Model Collaboration Framework**
 
-Empower **Claude/Sisyphus** as the architect to orchestrate **Coder** for code execution, **Codex** for code quality review, and **Gemini** for expert consultation,<br>forming an **automated multi-party collaboration loop**.
+Empower **Claude/Sisyphus** as the architect to orchestrate **Coder** for code execution, **Reviewer** for code quality review, and **Advisor** for expert consultation,<br>forming an **automated multi-party collaboration loop**.
 
 **Supports both Claude Code (MCP) and OpenCode (Oh-My-OpenCode) environments**
 
@@ -28,8 +28,8 @@ OMCC connects multiple top-tier models to build an efficient, cost-effective, an
 | Dimension | Value Proposition |
 | :--- | :--- |
 | **🧠 Cost Optimization** | **Claude/Sisyphus** handles high-intelligence reasoning & orchestration (expensive but powerful), while **Coder** handles heavy lifting of code execution (cost-effective volume). |
-| **🧩 Complementary Capabilities** | **Claude** compensates for **Coder**'s creativity gaps, **Codex** provides an independent third-party review perspective, and **Gemini** offers diverse expert opinions. |
-| **🛡️ Quality Assurance** | Introduces a dual-review mechanism: **Claude Initial Review** + **Codex Final Review** to ensure code robustness. |
+| **🧩 Complementary Capabilities** | **Claude** compensates for **Coder**'s creativity gaps, **Reviewer** provides an independent third-party review perspective, and **Advisor** offers diverse expert opinions. |
+| **🛡️ Quality Assurance** | Introduces a dual-review mechanism: **Claude Initial Review** + **Reviewer Final Review** to ensure code robustness. |
 | **🔄 Fully Automated Loop** | Supports a fully automated flow of `Decompose` → `Execute` → `Review` → `Retry`, minimizing human intervention. |
 | **🔧 Flexible Architecture** | Supports both **Claude Code (MCP)** and **OpenCode (Oh-My-OpenCode)** environments, choose as needed. |
 | **🔄 Context Preservation** | **SESSION_ID** session reuse ensures coherent multi-turn collaboration context, enabling stable execution of long tasks without information loss. |
@@ -41,8 +41,8 @@ OMCC connects multiple top-tier models to build an efficient, cost-effective, an
 | **Architect** | Claude | Sisyphus (Claude Opus) |
 | **Tool Invocation** | MCP Protocol | Sub-agent Delegation |
 | **Coder** | claude CLI + Configurable Backend | document-writer Agent |
-| **Codex** | codex CLI | oracle Agent |
-| **Gemini** | gemini CLI | frontend-ui-ux-engineer Agent |
+| **Reviewer** | reviewer CLI | oracle Agent |
+| **Advisor** | advisor CLI | frontend-ui-ux-engineer Agent |
 | **Use Case** | Claude Code Users | Prefer Open Source, Multi-LLM Providers |
 | **Config Complexity** | Medium | Higher |
 
@@ -55,9 +55,9 @@ In this system, each model has a clear responsibility:
 *   **Coder**: 🔨 **Executor**
     *   Refers to **high-throughput, execution-oriented** models (e.g., GLM-4.7, DeepSeek-V3, etc.).
     *   Can connect to **any third-party model supporting Claude Code API**, responsible for concrete code generation, modification, and batch task processing.
-*   **Codex (OpenAI)**: ⚖️ **Reviewer / Senior Code Consultant**
+*   **Reviewer (OpenAI)**: ⚖️ **Reviewer / Senior Code Consultant**
     *   Responsible for independent code quality control, providing objective Code Reviews, and serving as a consultant for architecture design and complex solutions.
-*   **Gemini**: 🧠 **Versatile Expert (Optional)**
+*   **Advisor**: 🧠 **Versatile Expert (Optional)**
     *   A top-tier AI expert on par with Claude. Can serve as senior consultant, independent reviewer, or code executor. Invoked on-demand.
 
 ### 📊 Case Study
@@ -70,13 +70,13 @@ In this system, each model has a clear responsibility:
 | **Total Cost** | $3.13 | $0.55 | **82% savings** |
 | **Claude Cost** | $3.13 | $0.29 | **91% savings** (architecture orchestration only) |
 | **Coder Cost** | $0 | $0.26 | Handles heavy code generation tasks |
-| **Quality Review** | ❌ No independent review | ✅ Claude Initial Review + Codex Final Review | Dual quality gates, controllable code quality |
+| **Quality Review** | ❌ No independent review | ✅ Claude Initial Review + Reviewer Final Review | Dual quality gates, controllable code quality |
 
 **Key Advantages**:
 - 💰 **Cost Optimization**: Claude outputs only concise instructions, leveraging cheap input pricing for review work, avoiding expensive code token output
 - 🔄 **Context Preservation**: SESSION_ID session reuse mechanism ensures coherent multi-turn collaboration context, enabling stable execution of long tasks
 - ⚡ **Long-Task Stability**: Optimized task decomposition and retry strategies ensure stable completion of large tasks (e.g., batch generating 7,488 lines of test code)
-- 🛡️ **Quality Assurance**: Dual-review mechanism (Claude Initial Review + Codex Final Review), controllable code quality
+- 🛡️ **Quality Assurance**: Dual-review mechanism (Claude Initial Review + Reviewer Final Review), controllable code quality
 
 ### Collaboration Workflow
 
@@ -98,24 +98,24 @@ flowchart TB
 
     subgraph ToolLayer ["Execution Layer"]
         Coder["🔨 Coder Tool<br><code>claude CLI → Configurable Backend</code><br>sandbox: workspace-write"]
-        Codex["⚖️ Codex Tool<br><code>codex CLI</code><br>sandbox: read-only"]
-        Gemini["🧠 Gemini Tool<br><code>gemini CLI</code><br>sandbox: workspace-write"]
+        Reviewer["⚖️ Reviewer Tool<br><code>reviewer CLI</code><br>sandbox: read-only"]
+        Advisor["🧠 Advisor Tool<br><code>advisor CLI</code><br>sandbox: workspace-write"]
     end
 
     User --> Claude
     Claude --> Prompt
-    Prompt -->|"coder / gemini"| MCP
+    Prompt -->|"coder / advisor"| MCP
 
     MCP -->|"Stream JSON"| Coder
-    MCP -->|"Stream JSON"| Gemini
+    MCP -->|"Stream JSON"| Advisor
 
     Coder -->|"SESSION_ID + result"| Review
-    Gemini -->|"SESSION_ID + result"| Review
+    Advisor -->|"SESSION_ID + result"| Review
 
     Review -->|"Needs Review / Expert Opinion"| MCP
-    MCP -->|"Stream JSON"| Codex
+    MCP -->|"Stream JSON"| Reviewer
 
-    Codex -->|"SESSION_ID + Review Verdict"| Review
+    Reviewer -->|"SESSION_ID + Review Verdict"| Review
 
     Review -->|"✅ Approved"| Done(["🎉 Task Complete"])
     Review -->|"❌ Needs Fix"| Prompt
@@ -129,11 +129,11 @@ flowchart TB
        ↓
 2. Claude analyzes, decomposes tasks, constructs precise Prompt
        ↓
-3. Calls coder (or gemini) tool → Execute code generation/modification
+3. Calls coder (or advisor) tool → Execute code generation/modification
        ↓
-4. Claude reviews results, decides if Codex review or Gemini consultation is needed
+4. Claude reviews results, decides if Reviewer review or Advisor consultation is needed
        ↓
-5. Calls codex (or gemini) tool → Independent Code Review / Get second opinion
+5. Calls reviewer (or advisor) tool → Independent Code Review / Get second opinion
        ↓
 6. Based on verdict: Approve / Optimize / Re-execute
 ```
@@ -148,16 +148,16 @@ Before starting, ensure you have installed the following tools:
     *   Windows: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
     *   macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 *   **Claude Code**: Version **≥ v2.0.56** ([Installation Guide](https://code.claude.com/docs))
-*   **Codex CLI**: Version **≥ v0.61.0** ([Installation Guide](https://developers.openai.com/codex/quickstart))
-*   **Gemini CLI** (Optional): Required for Gemini tool ([Installation Guide](https://github.com/google-gemini/gemini-cli))
+*   **Reviewer CLI**: Version **≥ v0.61.0** ([Installation Guide](https://developers.openai.com/reviewer/quickstart))
+*   **Advisor CLI** (Optional): Required for Advisor tool ([Installation Guide](https://github.com/google-advisor/advisor-cli))
 *   **Coder Backend API Token**: User configuration required. GLM-4.7 is recommended as reference. Get token from [Zhipu AI](https://open.bigmodel.cn).
 
 > **⚠️ Important: Costs & Permissions**
-> *   **Authorization**: The `claude`, `codex`, and `gemini` CLI tools must be logged in locally.
+> *   **Authorization**: The `claude`, `reviewer`, and `advisor` CLI tools must be logged in locally.
 > *   **Cost Warning**: Using these tools typically involves subscription fees or API usage costs.
 >     *   **Claude Code**: Requires an Anthropic account with billing set up (or 3rd-party integration).
->     *   **Codex CLI**: Requires an OpenAI account or API credits.
->     *   **Gemini CLI**: Defaults to the `gemini-3-pro-preview` model (may involve Google AI subscription or API limits).
+>     *   **Reviewer CLI**: Requires an OpenAI account or API credits.
+>     *   **Advisor CLI**: Defaults to the `advisor-3-pro-preview` model (may involve Google AI subscription or API limits).
 >     *   **Coder API**: You are responsible for the API costs of the configured backend model (e.g., Zhipu AI, DeepSeek).
 > *   Please ensure all tools are authenticated and account resources are sufficient before use.
 
@@ -168,14 +168,14 @@ We provide one-click setup scripts that automate all configuration steps:
 **Windows (Double-click or run in terminal)**
 ```powershell
 git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
-cd Coder-Codex-Gemini
+cd Coder-Reviewer-Advisor
 .\setup.bat
 ```
 
 **macOS/Linux**
 ```bash
 git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
-cd Coder-Codex-Gemini
+cd Coder-Reviewer-Advisor
 chmod +x setup.sh && ./setup.sh
 
 # Update existing installation (skip interactive configuration)
@@ -215,7 +215,7 @@ For source code modification or debugging:
 
 ```bash
 # Enter project directory
-cd /path/to/Coder-Codex-Gemini
+cd /path/to/Coder-Reviewer-Advisor
 
 # Install dependencies
 uv sync
@@ -279,14 +279,14 @@ The Skills layer provides workflow guidance to ensure Claude uses MCP tools corr
 # Windows (PowerShell)
 if (!(Test-Path "$env:USERPROFILE\.claude\skills")) { mkdir "$env:USERPROFILE\.claude\skills" }
 xcopy /E /I "skills\omcc-workflow" "$env:USERPROFILE\.claude\skills\omcc-workflow"
-# Optional: Install Gemini collaboration Skill
-xcopy /E /I "skills\gemini-collaboration" "$env:USERPROFILE\.claude\skills\gemini-collaboration"
+# Optional: Install Advisor collaboration Skill
+xcopy /E /I "skills\advisor-collaboration" "$env:USERPROFILE\.claude\skills\advisor-collaboration"
 
 # macOS/Linux
 mkdir -p ~/.claude/skills
 cp -r skills/omcc-workflow ~/.claude/skills/
-# Optional: Install Gemini collaboration Skill
-cp -r skills/gemini-collaboration ~/.claude/skills/
+# Optional: Install Advisor collaboration Skill
+cp -r skills/advisor-collaboration ~/.claude/skills/
 ```
 
 ### 5. Configure Global Prompt (Recommended)
@@ -298,12 +298,12 @@ Add mandatory rules to `~/.claude/CLAUDE.md` to ensure Claude follows the collab
 
 ## Mandatory Rules
 
-- **Default Collaboration**: All code/document modification tasks **must** be delegated to Coder for execution, and **must** call Codex for review after milestone completion
+- **Default Collaboration**: All code/document modification tasks **must** be delegated to Coder for execution, and **must** call Reviewer for review after milestone completion
 - **Skip Requires Confirmation**: If you determine collaboration is unnecessary, **must immediately pause** and report:
-  > "This is a simple [description] task, I judge Coder/Codex is not needed. Do you agree? Waiting for your confirmation."
-- **Violation = Termination**: Skipping Coder execution or Codex review without confirmation = **workflow violation**
+  > "This is a simple [description] task, I judge Coder/Reviewer is not needed. Do you agree? Waiting for your confirmation."
+- **Violation = Termination**: Skipping Coder execution or Reviewer review without confirmation = **workflow violation**
 - **Mandatory Session Reuse**: Always save the received `SESSION_ID` and include it in request parameters to maintain context
-- **SESSION_ID Management**: Each role (Coder/Codex/Gemini) has independent SESSION_IDs. Always use the actual SESSION_ID returned by MCP tool responses. Never create IDs manually or mix IDs across different roles
+- **SESSION_ID Management**: Each role (Coder/Reviewer/Advisor) has independent SESSION_IDs. Always use the actual SESSION_ID returned by MCP tool responses. Never create IDs manually or mix IDs across different roles
 
 ## ⚠️ Skill Reading Prerequisite (Mandatory)
 
@@ -312,11 +312,11 @@ Add mandatory rules to `~/.claude/CLAUDE.md` to ensure Claude follows the collab
 | MCP Tool | Prerequisite Skill | Action |
 |----------|-------------------|--------|
 | `mcp__omcc__coder` | `/omcc-workflow` | Must execute first |
-| `mcp__omcc__codex` | `/omcc-workflow` | Must execute first |
-| `mcp__omcc__gemini` | `/gemini-collaboration` | Must execute first |
+| `mcp__omcc__reviewer` | `/omcc-workflow` | Must execute first |
+| `mcp__omcc__advisor` | `/advisor-collaboration` | Must execute first |
 
 **Execution Flow**:
-1. User requests to use Coder/Codex/Gemini
+1. User requests to use Coder/Reviewer/Advisor
 2. **Immediately execute the corresponding Skill** (e.g., `/omcc-workflow`)
 3. Read the guidance content returned by the Skill
 4. Call MCP tool following the guidance
@@ -336,14 +336,14 @@ Add mandatory rules to `~/.claude/CLAUDE.md` to ensure Claude follows the collab
 | Role | Position | Purpose | sandbox | Retry |
 |------|----------|---------|---------|-------|
 | **Coder** | Code Executor | Generate/modify code, batch tasks | workspace-write | No retry by default |
-| **Codex** | Reviewer/Senior Consultant | Architecture design, quality control, Review | read-only | 1 retry by default |
-| **Gemini** | Senior Consultant (On-demand) | Architecture design, second opinion, frontend/UI | workspace-write (yolo) | 1 retry by default |
+| **Reviewer** | Reviewer/Senior Consultant | Architecture design, quality control, Review | read-only | 1 retry by default |
+| **Advisor** | Senior Consultant (On-demand) | Architecture design, second opinion, frontend/UI | workspace-write (yolo) | 1 retry by default |
 
 ## Core Workflow
 
 1. **Coder Executes**: Delegate all modification tasks to Coder
 2. **Claude Verifies**: Quick check after Coder completes; Claude fixes issues directly
-3. **Codex Reviews**: Call review after milestone development; if issues found, delegate to Coder for fixes, iterate until passed
+3. **Reviewer Reviews**: Call review after milestone development; if issues found, delegate to Coder for fixes, iterate until passed
 
 ## Task Decomposition Principle (Delegating to Coder)
 
@@ -351,17 +351,17 @@ Add mandatory rules to `~/.claude/CLAUDE.md` to ensure Claude follows the collab
 
 - **Precise Prompt**: Clear goal, sufficient context, explicit acceptance criteria
 - **Modular Split**: Related changes can be combined; independent modules separated
-- **Phased Review**: Claude verifies each module; Codex reviews at milestones
+- **Phased Review**: Claude verifies each module; Reviewer reviews at milestones
 
 ## Pre-coding Preparation (Complex Tasks)
 
 1. Search for affected symbols/entry points
 2. List files that need modification
-3. For complex issues, consult with Codex or Gemini first
+3. For complex issues, consult with Reviewer or Advisor first
 
-## Gemini Trigger Scenarios
+## Advisor Trigger Scenarios
 
-- **User Explicit Request**: User specifies using Gemini
+- **User Explicit Request**: User specifies using Advisor
 - **Claude Autonomous Call**: When designing frontend/UI, or need second opinion/independent perspective
 ```
 
@@ -389,8 +389,8 @@ For a smoother experience, add automatic authorization in `~/.claude/settings.js
   "permissions": {
     "allow": [
       "mcp__omcc__coder",
-      "mcp__omcc__codex",
-      "mcp__omcc__gemini"
+      "mcp__omcc__reviewer",
+      "mcp__omcc__advisor"
     ]
   }
 }
@@ -417,9 +417,9 @@ Calls configurable backend models to execute specific code generation or modific
 | `max_retries` | int | - | `0` | Max retry count (Coder defaults to no retry) |
 | `log_metrics` | bool | - | `false` | Whether to output metrics to stderr |
 
-### `codex` - Code Reviewer
+### `reviewer` - Code Reviewer
 
-Calls Codex for independent and strict code review.
+Calls Reviewer for independent and strict code review.
 
 | Parameter | Type | Required | Default | Description |
 | :--- | :--- | :---: | :--- | :--- |
@@ -430,18 +430,18 @@ Calls Codex for independent and strict code review.
 | `skip_git_repo_check` | bool | - | `true` | Whether to allow running in non-Git repositories |
 | `return_all_messages` | bool | - | `false` | Whether to return full conversation history (for debugging) |
 | `image` | List[Path]| - | `[]` | List of additional images (for UI review, etc.) |
-| `model` | string | - | `""` | Specify model, defaults to Codex's own config |
+| `model` | string | - | `""` | Specify model, defaults to Reviewer's own config |
 | `return_metrics` | bool | - | `false` | Whether to include metrics in return value |
 | `timeout` | int | - | `300` | Idle timeout (seconds), triggers when no output for this duration |
 | `max_duration` | int | - | `7200` | Max duration limit (seconds), default 2 hours, 0 for unlimited |
-| `max_retries` | int | - | `1` | Max retry count (Codex defaults to 1 retry) |
+| `max_retries` | int | - | `1` | Max retry count (Reviewer defaults to 1 retry) |
 | `log_metrics` | bool | - | `false` | Whether to output metrics to stderr |
 | `yolo` | bool | - | `false` | Run all commands without approval (skip sandbox) |
-| `profile` | string | - | `""` | Config profile name from ~/.codex/config.toml |
+| `profile` | string | - | `""` | Config profile name from ~/.reviewer/config.toml |
 
-### `gemini` - Versatile Expert (Optional)
+### `advisor` - Versatile Expert (Optional)
 
-Calls Gemini CLI for code execution, technical consultation, or code review. A top-tier AI expert on par with Claude.
+Calls Advisor CLI for code execution, technical consultation, or code review. A top-tier AI expert on par with Claude.
 
 | Parameter | Type | Required | Default | Description |
 | :--- | :--- | :---: | :--- | :--- |
@@ -450,7 +450,7 @@ Calls Gemini CLI for code execution, technical consultation, or code review. A t
 | `sandbox` | string | - | `workspace-write` | Sandbox policy, write allowed by default (flexible) |
 | `yolo` | bool | - | `true` | Skip approval, enabled by default |
 | `SESSION_ID` | string | - | `""` | Session ID for multi-turn conversations |
-| `model` | string | - | `gemini-3-pro-preview` | Specify model version |
+| `model` | string | - | `advisor-3-pro-preview` | Specify model version |
 | `return_all_messages` | bool | - | `false` | Whether to return full conversation history |
 | `return_metrics` | bool | - | `false` | Whether to include metrics in return value |
 | `timeout` | int | - | `300` | Idle timeout (seconds) |
@@ -464,7 +464,7 @@ Calls Gemini CLI for code execution, technical consultation, or code review. A t
 - 🔨 **Code Executor**: Prototype development, feature implementation (especially frontend/UI)
 
 **Trigger Scenarios**:
-- User explicitly requests Gemini
+- User explicitly requests Advisor
 - Claude needs a second opinion or independent perspective
 
 ### Timeout Mechanism
@@ -474,7 +474,7 @@ This project uses a **dual timeout protection** mechanism:
 | Timeout Type | Parameter | Default | Description |
 |--------------|-----------|---------|-------------|
 | **Idle Timeout** | `timeout` | 300s | Triggers when no output for this duration; resets on activity |
-| **Max Duration** | `max_duration` | 3600s (codex: 7200s) | Hard limit from start, forcibly terminates regardless of output |
+| **Max Duration** | `max_duration` | 3600s (reviewer: 7200s) | Hard limit from start, forcibly terminates regardless of output |
 
 **Error Type Distinction**:
 - `idle_timeout`: Idle timeout (no output)
@@ -588,7 +588,7 @@ This project uses a **MCP + Skills + Global Prompt** hybrid architecture in Clau
 
 ### Use Cases
 
-- Want to use multiple LLM providers (Claude, GPT, Gemini)
+- Want to use multiple LLM providers (Claude, GPT, Advisor)
 - Need multi-agent parallel collaboration
 - Want to see real-time activity of each sub-agent
 - Prefer open-source tools
@@ -607,14 +607,14 @@ This project uses a **MCP + Skills + Global Prompt** hybrid architecture in Clau
 **Windows (Double-click or run in terminal)**
 ```powershell
 git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
-cd Coder-Codex-Gemini
+cd Coder-Reviewer-Advisor
 .\setup-opencode.bat
 ```
 
 **macOS/Linux**
 ```bash
 git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
-cd Coder-Codex-Gemini
+cd Coder-Reviewer-Advisor
 chmod +x setup-opencode.sh && ./setup-opencode.sh
 ```
 
@@ -656,12 +656,12 @@ The main items to configure are `prompt_append` and `model` for each agent:
       "prompt_append": "## ⚠️ Identity Confirmation: You are the Coder sub-agent..."
     },
     "oracle": {
-      "model": "openai/gpt-5.1-codex-mini",
-      "prompt_append": "## ⚠️ Identity Confirmation: You are the Codex sub-agent..."
+      "model": "openai/gpt-5.1-reviewer-mini",
+      "prompt_append": "## ⚠️ Identity Confirmation: You are the Reviewer sub-agent..."
     },
     "frontend-ui-ux-engineer": {
-      "model": "google/antigravity-gemini-3-pro-high",
-      "prompt_append": "## ⚠️ Identity Confirmation: You are the Gemini sub-agent..."
+      "model": "google/antigravity-advisor-3-pro-high",
+      "prompt_append": "## ⚠️ Identity Confirmation: You are the Advisor sub-agent..."
     }
   }
 }
@@ -719,8 +719,8 @@ When using third-party API proxies, **the model name key must exactly match the 
 |----------|----------------|-------|----------------|
 | **Architect** | Sisyphus | Claude Opus 4.5 | Requirement analysis, task decomposition, final decisions |
 | **Coder** | document-writer | GLM-4.7 | Code generation, document modification, batch tasks |
-| **Codex** | oracle | GPT-5.1 Codex Mini | Code review, architecture consulting, quality control |
-| **Gemini** | frontend-ui-ux-engineer | Gemini 3 Pro High | Frontend/UI, second opinions, independent perspective |
+| **Reviewer** | oracle | GPT-5.1 Reviewer Mini | Code review, architecture consulting, quality control |
+| **Advisor** | frontend-ui-ux-engineer | Advisor 3 Pro High | Frontend/UI, second opinions, independent perspective |
 
 ### Authentication Setup
 
@@ -731,11 +731,11 @@ After installation, complete authentication for each provider:
 opencode auth login
 # → Select: Anthropic → Claude Pro/Max
 
-# 2. OpenAI (ChatGPT/Codex)
+# 2. OpenAI (ChatGPT/Reviewer)
 opencode auth login
-# → Select: OpenAI → ChatGPT Plus/Pro (Codex Subscription)
+# → Select: OpenAI → ChatGPT Plus/Pro (Reviewer Subscription)
 
-# 3. Google (Gemini)
+# 3. Google (Advisor)
 opencode auth login
 # → Select: Google → OAuth with Google (Antigravity)
 ```
@@ -761,7 +761,7 @@ Issues and Pull Requests are welcome!
 ```bash
 # 1. Clone repository
 git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
-cd Coder-Codex-Gemini
+cd Coder-Reviewer-Advisor
 
 # 2. Install dependencies (using uv)
 uv sync

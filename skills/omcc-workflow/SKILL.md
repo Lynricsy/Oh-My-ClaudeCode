@@ -1,9 +1,9 @@
 ---
 name: omcc-workflow
 description: |
-  OMCC (Coder-Codex-Gemini) collaboration for code and document tasks.
+  OMCC (Coder-Reviewer-Advisor) collaboration for code and document tasks.
   Use when: writing/modifying code, editing documents, implementing features, fixing bugs, refactoring, or code review.
-  协调 Coder 执行代码/文档改动，Codex 审核代码质量。
+  协调 Coder 执行代码/文档改动，Reviewer 审核代码质量。
 ---
 
 # OMCC 协作流程
@@ -12,8 +12,8 @@ description: |
 
 - **Claude**：架构师 + 验收者 + 最终决策者 + 协调者
 - **Coder**：执行者（代码/文档改动）
-- **Codex**：审核者 + 高级代码顾问
-- **Gemini**：高阶顾问（架构设计、第二意见）→ 详见 `/gemini-collaboration`
+- **Reviewer**：审核者 + 高级代码顾问
+- **Advisor**：高阶顾问（架构设计、第二意见）→ 详见 `/advisor-collaboration`
 - **Frontend**：**前端/UI 专家**（界面设计、样式、动效）
 - **Librarian**：网络研究专家（文档查询 + 网络搜索 + 代码搜索）
 - **Looker**：多模态分析专家（PDF/图片/图表分析）
@@ -24,7 +24,7 @@ description: |
 
 - **精准 Prompt**：目标明确、上下文充分、验收标准清晰
 - **按模块拆分**：相关改动可合并，独立模块分开
-- **阶段性 Review**：每模块 Claude 验收，里程碑后 Codex 审核
+- **阶段性 Review**：每模块 Claude 验收，里程碑后 Reviewer 审核
 
 ## 🎯 如何给 Coder 编写有效的任务提示词
 
@@ -161,7 +161,7 @@ Librarian(PROMPT="React useEffect 的最佳实践", cd=".")
 调用前（复杂任务推荐）：
 - **调用 Librarian** 查询外部文档和最佳实践
 - 在 PROMPT 中列出修改清单
-- **复杂问题可先与 Codex 沟通**：架构设计或复杂方案可先咨询后再委托 Coder 执行
+- **复杂问题可先与 Reviewer 沟通**：架构设计或复杂方案可先咨询后再委托 Coder 执行
 
 ### 2. 验收：Claude 快速检查
 
@@ -169,9 +169,9 @@ Coder 执行完毕后，Claude 快速读取验收：
 - **无误** → 继续下一任务
 - **有误** → Claude 自行修复
 
-### 3. 审核：Codex 阶段性 Review
+### 3. 审核：Reviewer 阶段性 Review
 
-阶段性开发完成后，调用 Codex review：
+阶段性开发完成后，调用 Reviewer review：
 - 检查代码质量、潜在 Bug
 - 结论：✅ 通过 / ⚠️ 优化 / ❌ 修改
 
@@ -180,15 +180,15 @@ Coder 执行完毕后，Claude 快速读取验收：
 | 工具 | 用途 | sandbox | 模型 | 重试 |
 |------|------|---------|------|------|
 | Coder | 执行改动 | workspace-write | 可配置 | 默认不重试 |
-| Codex | 代码审核 | read-only | OpenAI Codex | 默认 1 次 |
-| Gemini | 顾问/执行 | workspace-write (yolo) | gemini-3-pro | 默认 1 次 |
-| **Frontend** | **前端/UI** | workspace-write | gemini-3-pro | 默认 1 次 |
-| Librarian | 网络研究 | read-only | gemini-3-flash | 默认 1 次 |
-| Looker | 多模态分析 | read-only | gemini-3-flash | 默认 1 次 |
+| Reviewer | 代码审核 | read-only | OpenAI Reviewer | 默认 1 次 |
+| Advisor | 顾问/执行 | workspace-write (yolo) | advisor-3-pro | 默认 1 次 |
+| **Frontend** | **前端/UI** | workspace-write | advisor-3-pro | 默认 1 次 |
+| Librarian | 网络研究 | read-only | advisor-3-flash | 默认 1 次 |
+| Looker | 多模态分析 | read-only | advisor-3-flash | 默认 1 次 |
 
 ### Librarian 网络研究能力
 
-Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
+Librarian 通过 OpenCode CLI 配置的 MCP 提供网络研究能力：
 
 | MCP | 功能 | 示例场景 |
 |-----|------|----------|
@@ -217,7 +217,7 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 | **架构图** | 解释组件关系和数据流 |
 | **截图** | 识别错误信息、UI 状态 |
 
-> 💡 **Gemini 详细指南**：如需了解 Gemini 的具体调用方式和触发场景，请执行 `/gemini-collaboration` 技能。
+> 💡 **Advisor 详细指南**：如需了解 Advisor 的具体调用方式和触发场景，请执行 `/advisor-collaboration` 技能。
 
 ### 前端/UI 任务路由
 
@@ -229,8 +229,8 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 | 样式/动效实现 | **Frontend** |
 | UI 审查/改进 | **Frontend** |
 | 代码实现（设计完成后） | Coder |
-| 代码审查 | Codex |
-| 架构设计/第二意见 | Gemini |
+| 代码审查 | Reviewer |
+| 架构设计/第二意见 | Advisor |
 
 > 💡 **Frontend 详细指南**：执行 `/frontend` 技能获取完整的前端开发指南。
 
@@ -238,6 +238,6 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 
 ## 独立决策
 
-Coder/Codex/Gemini 的意见仅供参考。你（Claude）是最终决策者，需批判性思考，做出最优决策。
+Coder/Reviewer/Advisor 的意见仅供参考。你（Claude）是最终决策者，需批判性思考，做出最优决策。
 
-详细参数：[coder-guide.md](coder-guide.md) | [codex-guide.md](codex-guide.md)
+详细参数：[coder-guide.md](coder-guide.md) | [reviewer-guide.md](reviewer-guide.md)

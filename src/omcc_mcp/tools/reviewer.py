@@ -1,7 +1,7 @@
-"""Codex 工具实现
+"""Reviewer 工具实现
 
-调用 Codex 进行代码审核。
-复用 CodexMCP 的核心逻辑。
+调用 Reviewer 进行代码审核。
+复用 ReviewerMCP 的核心逻辑。
 """
 
 from __future__ import annotations
@@ -144,13 +144,13 @@ class MetricsCollector:
 # 命令执行
 # ============================================================================
 
-def run_codex_command(
+def run_reviewer_command(
     cmd: list[str],
     timeout: int = 300,
     max_duration: int = 7200,
     prompt: str = "",
 ) -> Generator[str, None, tuple[Optional[int], int]]:
-    """执行 Codex 命令并流式返回输出
+    """执行 Reviewer 命令并流式返回输出
 
     Args:
         cmd: 命令和参数列表
@@ -165,17 +165,17 @@ def run_codex_command(
         (exit_code, raw_output_lines) 元组
 
     Raises:
-        CommandNotFoundError: codex CLI 未安装时抛出
+        CommandNotFoundError: reviewer CLI 未安装时抛出
         CommandTimeoutError: 命令执行超时时抛出
     """
-    codex_path = shutil.which('codex')
-    if not codex_path:
+    reviewer_path = shutil.which('reviewer')
+    if not reviewer_path:
         raise CommandNotFoundError(
-            "未找到 codex CLI。请确保已安装 Codex CLI 并添加到 PATH。\n"
-            "安装指南：https://developers.openai.com/codex/quickstart"
+            "未找到 reviewer CLI。请确保已安装 Reviewer CLI 并添加到 PATH。\n"
+            "安装指南：https://developers.openai.com/reviewer/quickstart"
         )
     popen_cmd = cmd.copy()
-    popen_cmd[0] = codex_path
+    popen_cmd[0] = reviewer_path
 
     process = subprocess.Popen(
         popen_cmd,
@@ -245,7 +245,7 @@ def run_codex_command(
         # 检查总时长硬上限（优先级高）
         if max_duration > 0 and (now - start_time) >= max_duration:
             timeout_error = CommandTimeoutError(
-                f"codex 执行超时（总时长超过 {max_duration}s），进程已终止。",
+                f"reviewer 执行超时（总时长超过 {max_duration}s），进程已终止。",
                 is_idle=False
             )
             break
@@ -253,7 +253,7 @@ def run_codex_command(
         # 检查空闲超时
         if (now - last_activity_time) >= timeout:
             timeout_error = CommandTimeoutError(
-                f"codex 空闲超时（{timeout}s 无输出），进程已终止。",
+                f"reviewer 空闲超时（{timeout}s 无输出），进程已终止。",
                 is_idle=True
             )
             break
@@ -293,7 +293,7 @@ def run_codex_command(
             process.wait()
         # 进程等待超时（罕见情况），视为总时长超时
         timeout_error = CommandTimeoutError(
-            f"codex 进程等待超时，进程已终止。",
+            f"reviewer 进程等待超时，进程已终止。",
             is_idle=False
         )
     finally:
@@ -316,29 +316,29 @@ def run_codex_command(
 
 
 @contextmanager
-def safe_codex_command(
+def safe_reviewer_command(
     cmd: list[str],
     timeout: int = 300,
     max_duration: int = 7200,
     prompt: str = "",
 ) -> Iterator[tuple[Generator[str, None, None], list[Optional[int]], list[int]]]:
-    """安全执行 Codex 命令的上下文管理器
+    """安全执行 Reviewer 命令的上下文管理器
 
     确保在任何情况下（包括异常）都能正确清理子进程。
 
     用法:
-        with safe_codex_command(cmd, timeout, max_duration, prompt) as gen:
+        with safe_reviewer_command(cmd, timeout, max_duration, prompt) as gen:
             for line in gen:
                 process_line(line)
     """
-    codex_path = shutil.which('codex')
-    if not codex_path:
+    reviewer_path = shutil.which('reviewer')
+    if not reviewer_path:
         raise CommandNotFoundError(
-            "未找到 codex CLI。请确保已安装 Codex CLI 并添加到 PATH。\n"
-            "安装指南：https://developers.openai.com/codex/quickstart"
+            "未找到 reviewer CLI。请确保已安装 Reviewer CLI 并添加到 PATH。\n"
+            "安装指南：https://developers.openai.com/reviewer/quickstart"
         )
     popen_cmd = cmd.copy()
-    popen_cmd[0] = codex_path
+    popen_cmd[0] = reviewer_path
 
     process = subprocess.Popen(
         popen_cmd,
@@ -440,14 +440,14 @@ def safe_codex_command(
 
                 if max_duration > 0 and (now - start_time) >= max_duration:
                     timeout_error = CommandTimeoutError(
-                        f"codex 执行超时（总时长超过 {max_duration}s），进程已终止。",
+                        f"reviewer 执行超时（总时长超过 {max_duration}s），进程已终止。",
                         is_idle=False
                     )
                     break
 
                 if (now - last_activity_time) >= timeout:
                     timeout_error = CommandTimeoutError(
-                        f"codex 空闲超时（{timeout}s 无输出），进程已终止。",
+                        f"reviewer 空闲超时（{timeout}s 无输出），进程已终止。",
                         is_idle=True
                     )
                     break
@@ -478,7 +478,7 @@ def safe_codex_command(
                     process.kill()
                     process.wait()
                 timeout_error = CommandTimeoutError(
-                    f"codex 进程等待超时，进程已终止。",
+                    f"reviewer 进程等待超时，进程已终止。",
                     is_idle=False
                 )
             finally:
@@ -512,7 +512,7 @@ def safe_codex_command(
 def _filter_last_lines(lines: list[str], max_lines: int = 50) -> list[str]:
     """过滤 last_lines，脱敏 tool_result 中的大内容
 
-    Codex 的 JSONL 格式：tool_result 在 item.type 中。
+    Reviewer 的 JSONL 格式：tool_result 在 item.type 中。
     这里只脱敏 tool_result 的 content 字段，保留消息结构和所有其他上下文。
     """
     import copy
@@ -607,7 +607,7 @@ def _is_auth_error(text: str) -> bool:
 def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
     """判断错误是否可以重试
 
-    Codex 是只读操作，大部分错误都可以安全重试。
+    Reviewer 是只读操作，大部分错误都可以安全重试。
     排除：命令不存在（需要用户干预）、认证错误（需要用户登录）
     """
     if error_kind == ErrorKind.COMMAND_NOT_FOUND:
@@ -622,7 +622,7 @@ def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
 # 主工具函数
 # ============================================================================
 
-async def codex_tool(
+async def reviewer_tool(
     PROMPT: Annotated[str, "审核任务描述"],
     cd: Annotated[Path, "工作目录"],
     sandbox: Annotated[
@@ -642,7 +642,7 @@ async def codex_tool(
     ] = None,
     model: Annotated[
         str,
-        Field(description="指定模型，默认使用 Codex 自己的配置"),
+        Field(description="指定模型，默认使用 Reviewer 自己的配置"),
     ] = "",
     yolo: Annotated[
         bool,
@@ -650,31 +650,31 @@ async def codex_tool(
     ] = False,
     profile: Annotated[
         str,
-        "从 ~/.codex/config.toml 加载的配置文件名称",
+        "从 ~/.reviewer/config.toml 加载的配置文件名称",
     ] = "",
-    max_retries: Annotated[int, "最大重试次数，默认 1（Codex 只读可安全重试）"] = 1,
+    max_retries: Annotated[int, "最大重试次数，默认 1（Reviewer 只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
-    """执行 Codex 代码审核
+    """执行 Reviewer 代码审核
 
-    调用 Codex 进行代码审核。
+    调用 Reviewer 进行代码审核。
 
     **角色定位**：代码审核者
     - 检查代码质量（可读性、可维护性、潜在 bug）
     - 评估需求完成度
     - 给出明确结论：✅ 通过 / ⚠️ 建议优化 / ❌ 需要修改
 
-    **注意**：Codex 仅审核，严禁修改代码，默认 sandbox 为 read-only
-    **重试策略**：Codex 默认允许 1 次重试（只读操作无副作用）
+    **注意**：Reviewer 仅审核，严禁修改代码，默认 sandbox 为 read-only
+    **重试策略**：Reviewer 默认允许 1 次重试（只读操作无副作用）
     """
     # 初始化指标收集器
-    metrics = MetricsCollector(tool="codex", prompt=PROMPT, sandbox=sandbox)
+    metrics = MetricsCollector(tool="reviewer", prompt=PROMPT, sandbox=sandbox)
 
     # 归一化可选参数
     image_list = image or []
 
     # 构建命令（shell=False 时不需要转义）
-    cmd = ["codex", "exec", "--sandbox", sandbox, "--cd", str(cd), "--json"]
+    cmd = ["reviewer", "exec", "--sandbox", sandbox, "--cd", str(cd), "--json"]
 
     if image_list:
         cmd.extend(["--image", ",".join(str(p) for p in image_list)])
@@ -699,11 +699,27 @@ async def codex_tool(
 
 ---
 
+**你的角色**：代码审核者 + 任务验收者
+
+**核心职责**：
+1. **代码质量审核**：检查代码可读性、可维护性、潜在 bug
+2. **任务完成度验证**：需求是否完整实现、边界情况是否覆盖
+3. **对齐性检查**：实现是否与原始需求一致
+4. **测试验证**：如果提供了测试命令，请运行相关测试
+
+**重要限制**：
+- 你可以读取文件和运行测试命令（如 npm test、pytest）
+- **严禁修改、创建或删除代码/文档文件**
+- 测试产生的临时文件/缓存可以写入
+- 只做检查和验证，不做实际代码改动
+
 **最终回复要求**：在你的最终回复中，必须包含完整的审核总结：
 1. **审核过程**：简述你检查了哪些方面
-2. **关键发现**：列出发现的问题或亮点
-3. **最终结论**：明确给出 ✅ 通过 / ⚠️ 建议优化 / ❌ 需要修改
-4. **改进建议**：如有问题，给出具体的改进方向
+2. **任务完成度**：需求是否完整实现，哪些部分已完成，哪些可能遗漏
+3. **测试结果**：如果运行了测试，说明测试结果
+4. **关键发现**：列出发现的问题或亮点
+5. **最终结论**：明确给出 ✅ 通过 / ⚠️ 建议优化 / ❌ 需要修改
+6. **改进建议**：如有问题，给出具体的改进方向
 
 这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的分析过程。"""
 
@@ -729,7 +745,7 @@ async def codex_tool(
         last_lines: list[str] = []
 
         try:
-            with safe_codex_command(cmd, timeout=timeout, max_duration=max_duration, prompt=full_prompt) as (gen, exit_code_holder, raw_lines_holder):
+            with safe_reviewer_command(cmd, timeout=timeout, max_duration=max_duration, prompt=full_prompt) as (gen, exit_code_holder, raw_lines_holder):
                 for line in gen:
                     last_lines.append(line)
                     if len(last_lines) > 50:
@@ -743,7 +759,7 @@ async def codex_tool(
                             import copy
                             safe_dict = copy.deepcopy(line_dict)
                             item = safe_dict.get("item", {})
-                            # Codex 的 tool_result 在 item 中
+                            # Reviewer 的 tool_result 在 item 中
                             if item.get("type") == "tool_result":
                                 # 只保留 tool_use_id 和 type，脱敏 content
                                 if "content" in item:
@@ -770,7 +786,7 @@ async def codex_tool(
                         if "fail" in line_dict.get("type", ""):
                             had_error = True
                             fail_msg = line_dict.get("error", {}).get("message", "")
-                            err_message += "\n\n[codex error] " + fail_msg
+                            err_message += "\n\n[reviewer error] " + fail_msg
                             # 检测是否为认证错误（优先级高于 UPSTREAM_ERROR）
                             if _is_auth_error(fail_msg):
                                 error_kind = ErrorKind.AUTH_REQUIRED
@@ -783,7 +799,7 @@ async def codex_tool(
 
                             if not is_reconnecting:
                                 had_error = True
-                                err_message += "\n\n[codex error] " + error_msg
+                                err_message += "\n\n[reviewer error] " + error_msg
                                 # 检测是否为认证错误（优先级高于 UPSTREAM_ERROR）
                                 if _is_auth_error(error_msg):
                                     error_kind = ErrorKind.AUTH_REQUIRED
@@ -816,7 +832,7 @@ async def codex_tool(
 
             result: Dict[str, Any] = {
                 "success": False,
-                "tool": "codex",
+                "tool": "reviewer",
                 "error": str(e),
                 "error_kind": ErrorKind.COMMAND_NOT_FOUND,
                 "error_detail": _build_error_detail(str(e)),
@@ -831,7 +847,7 @@ async def codex_tool(
             had_error = True
             err_message = str(e)
             success = False  # 明确设置为失败
-            # 超时可以重试（Codex 只读）
+            # 超时可以重试（Reviewer 只读）
             if retries < max_retries:
                 all_last_lines = last_lines.copy()
                 last_error = {
@@ -872,7 +888,7 @@ async def codex_tool(
             success = False
             if not error_kind:
                 error_kind = ErrorKind.EMPTY_RESULT
-            err_message = "未能获取 Codex 响应内容。可尝试设置 return_all_messages=True 获取详细信息。\n\n" + err_message
+            err_message = "未能获取 Reviewer 响应内容。可尝试设置 return_all_messages=True 获取详细信息。\n\n" + err_message
 
         # 检查退出码
         if exit_code is not None and exit_code != 0 and success:
@@ -927,7 +943,7 @@ async def codex_tool(
     if success:
         result = {
             "success": True,
-            "tool": "codex",
+            "tool": "reviewer",
             "SESSION_ID": thread_id,
             "result": agent_messages,
             "duration": metrics.format_duration(),
@@ -944,17 +960,17 @@ async def codex_tool(
         final_error = err_message
         if error_kind == ErrorKind.AUTH_REQUIRED:
             final_error = (
-                "请先登录 Codex CLI。运行以下命令完成认证：\n"
-                "  codex login\n"
+                "请先登录 Reviewer CLI。运行以下命令完成认证：\n"
+                "  reviewer login\n"
                 "\n"
                 "或使用 API Key 认证：\n"
-                "  printenv OPENAI_API_KEY | codex login --with-api-key\n"
+                "  printenv OPENAI_API_KEY | reviewer login --with-api-key\n"
                 "\n" + err_message
             )
 
         result = {
             "success": False,
-            "tool": "codex",
+            "tool": "reviewer",
             "error": final_error,
             "error_kind": error_kind,
             "error_detail": _build_error_detail(

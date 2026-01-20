@@ -1,7 +1,7 @@
 """Librarian 工具实现
 
 一个专注于网络研究的子代理。
-基于 OpenCode CLI，使用 Gemini 3 Flash 模型（快速、低成本）。
+基于 OpenCode CLI，使用 Advisor 3 Flash 模型（快速、低成本）。
 
 主要功能：
 - 查询官方文档和技术资料
@@ -634,7 +634,7 @@ async def librarian_tool(
     - 📄 网页抓取：深度阅读技术文章（firecrawl）
 
     **特点**：
-    - 使用 Gemini 3 Flash 模型，响应快速、成本低
+    - 使用 Advisor 3 Flash 模型，响应快速、成本低
     - 默认只读模式，不会修改代码
     - 专注于外部信息检索，不处理本地代码搜索
 
@@ -663,7 +663,7 @@ async def librarian_tool(
     cmd = ["opencode", "run"]
     cmd.extend(["--format", "json"])
 
-    # 使用配置的模型（默认 Gemini 3 Flash，快速、低成本）
+    # 使用配置的模型（默认 Advisor 3 Flash，快速、低成本）
     from omcc_mcp.config import get_agent_model
     model_to_use = get_agent_model("librarian")
     if model_to_use:

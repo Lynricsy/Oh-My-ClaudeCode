@@ -102,9 +102,9 @@ description: |
 | 任务 | 路由 |
 |------|------|
 | 需要创意设计 | Frontend |
-| 需要架构决策 | Codex / Gemini |
+| 需要架构决策 | Reviewer / Advisor |
 | 复杂代码实现 | Coder |
-| 代码审查 | Codex |
+| 代码审查 | Reviewer |
 | 深度研究 | Librarian |
 
 ## 工作原则
