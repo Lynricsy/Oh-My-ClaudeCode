@@ -644,12 +644,9 @@ async def librarian_tool(
     cmd = ["gemini"]
     cmd.extend(["--output-format", "stream-json"])
 
-    # Librarian 默认只读，使用 sandbox 模式
-    if sandbox == "read-only":
-        cmd.append("--sandbox")
-    else:
-        # 非只读模式使用 yolo
-        cmd.append("--yolo")
+    # Librarian 是只读研究代理，使用 yolo 模式
+    # 注意：--sandbox 模式在某些环境下有 bunx 执行权限问题
+    cmd.append("--yolo")
 
     # 使用配置的模型（默认 gemini-3-flash，快速、低成本）
     from omcc_mcp.config import get_agent_model
