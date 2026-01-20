@@ -28,10 +28,10 @@ class ConfigError(Exception):
 
 DEFAULT_MODELS = {
     "coder": "glm-4.7",                          # Coder 默认使用 GLM-4.7
-    "advisor": "google/advisor-3-pro-preview",     # Advisor 默认模型 (OpenCode 格式)
-    "frontend": "google/advisor-3-pro-preview",   # Frontend 默认使用 Advisor 3 Pro
-    "librarian": "google/advisor-3-flash-preview", # Librarian 默认使用 Advisor 3 Flash
-    "looker": "google/advisor-3-flash-preview",   # Looker 默认使用 Advisor 3 Flash
+    "advisor": "google/gemini-3-pro-preview",     # Advisor 默认模型 (OpenCode 格式)
+    "frontend": "google/gemini-3-pro-preview",   # Frontend 默认使用 Advisor 3 Pro
+    "librarian": "google/gemini-3-flash-preview", # Librarian 默认使用 Advisor 3 Flash
+    "looker": "google/gemini-3-flash-preview",   # Looker 默认使用 Advisor 3 Flash
     "chore": None,                               # Chore 使用 OpenCode 默认模型
 }
 
@@ -159,16 +159,16 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 # OpenCode CLI 相关代理模型配置
 # ============================================================================
 [advisor]
-model = "advisor-3-pro"  # Advisor 默认模型
+model = "gemini-3-pro"  # Advisor 默认模型
 
 [frontend]
-model = "advisor-3-pro"  # Frontend 前端/UI 代理
+model = "gemini-3-pro"  # Frontend 前端/UI 代理
 
 [librarian]
-model = "advisor-3-flash"  # Librarian 研究代理（快速、低成本）
+model = "gemini-3-flash"  # Librarian 研究代理（快速、低成本）
 
 [looker]
-model = "advisor-3-flash"  # Looker 多模态代理（快速、低成本）
+model = "gemini-3-flash"  # Looker 多模态代理（快速、低成本）
 
 # ============================================================================
 # OpenCode 相关代理配置
