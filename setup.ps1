@@ -834,6 +834,54 @@ if (Test-Path "`$env:USERPROFILE\.gemini\.env.ps1") { . "`$env:USERPROFILE\.gemi
                 }
             }
             }  # End of UpdateMode check for Step 6.3
+
+            # =================================================================
+            # Step 6.4: Install Vercel React Best Practices skill
+            # =================================================================
+            Write-Host ""
+            Write-Host "  Installing Vercel React Best Practices skill..." -ForegroundColor Cyan
+
+            $geminiSkillsDir = "$env:USERPROFILE\.gemini\skills"
+            $reactSkillDir = "$geminiSkillsDir\react-best-practices"
+            $reactSkillRepo = "https://github.com/vercel-labs/agent-skills.git"
+
+            if (!(Test-Path $geminiSkillsDir)) {
+                New-Item -ItemType Directory -Path $geminiSkillsDir -Force | Out-Null
+            }
+
+            $needInstall = $true
+            if (Test-Path $reactSkillDir) {
+                if ($UpdateMode) {
+                    Write-WarningMsg "Updating Vercel React Best Practices skill..."
+                    Remove-Item -Recurse -Force $reactSkillDir
+                } else {
+                    Write-Success "Vercel React Best Practices skill already installed"
+                    $needInstall = $false
+                }
+            }
+
+            if ($needInstall) {
+                # Clone only the specific skill folder using sparse checkout
+                $tempDir = [System.IO.Path]::GetTempPath() + [System.Guid]::NewGuid().ToString()
+                try {
+                    git clone --depth 1 --filter=blob:none --sparse $reactSkillRepo $tempDir 2>$null
+                    Push-Location $tempDir
+                    git sparse-checkout set skills/react-best-practices 2>$null
+                    if (Test-Path "skills\react-best-practices") {
+                        Copy-Item -Recurse "skills\react-best-practices" $reactSkillDir
+                        Write-Success "Installed Vercel React Best Practices skill"
+                    } else {
+                        Write-WarningMsg "Failed to checkout react-best-practices skill"
+                    }
+                    Pop-Location
+                } catch {
+                    Write-WarningMsg "Failed to clone agent-skills repository"
+                } finally {
+                    if (Test-Path $tempDir) {
+                        Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
+                    }
+                }
+            }
         } catch {
             Write-WarningMsg "Failed to configure Gemini CLI: $_"
         }

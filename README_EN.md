@@ -177,6 +177,9 @@ cd Coder-Codex-Gemini
 git clone https://github.com/Lynricsy/Oh-My-ClaudeCode.git
 cd Coder-Codex-Gemini
 chmod +x setup.sh && ./setup.sh
+
+# Update existing installation (skip interactive configuration)
+./setup.sh --update
 ```
 
 **What the script does**:
@@ -410,7 +413,7 @@ Calls configurable backend models to execute specific code generation or modific
 | `return_all_messages` | bool | - | `false` | Whether to return full conversation history (for debugging) |
 | `return_metrics` | bool | - | `false` | Whether to include metrics in return value |
 | `timeout` | int | - | `300` | Idle timeout (seconds), triggers when no output for this duration |
-| `max_duration` | int | - | `1800` | Max duration limit (seconds), default 30 min, 0 for unlimited |
+| `max_duration` | int | - | `3600` | Max duration limit (seconds), default 1 hour, 0 for unlimited |
 | `max_retries` | int | - | `0` | Max retry count (Coder defaults to no retry) |
 | `log_metrics` | bool | - | `false` | Whether to output metrics to stderr |
 
@@ -430,7 +433,7 @@ Calls Codex for independent and strict code review.
 | `model` | string | - | `""` | Specify model, defaults to Codex's own config |
 | `return_metrics` | bool | - | `false` | Whether to include metrics in return value |
 | `timeout` | int | - | `300` | Idle timeout (seconds), triggers when no output for this duration |
-| `max_duration` | int | - | `1800` | Max duration limit (seconds), default 30 min, 0 for unlimited |
+| `max_duration` | int | - | `7200` | Max duration limit (seconds), default 2 hours, 0 for unlimited |
 | `max_retries` | int | - | `1` | Max retry count (Codex defaults to 1 retry) |
 | `log_metrics` | bool | - | `false` | Whether to output metrics to stderr |
 | `yolo` | bool | - | `false` | Run all commands without approval (skip sandbox) |
@@ -451,7 +454,7 @@ Calls Gemini CLI for code execution, technical consultation, or code review. A t
 | `return_all_messages` | bool | - | `false` | Whether to return full conversation history |
 | `return_metrics` | bool | - | `false` | Whether to include metrics in return value |
 | `timeout` | int | - | `300` | Idle timeout (seconds) |
-| `max_duration` | int | - | `1800` | Max duration limit (seconds) |
+| `max_duration` | int | - | `3600` | Max duration limit (seconds), default 1 hour |
 | `max_retries` | int | - | `1` | Max retry count |
 | `log_metrics` | bool | - | `false` | Whether to output metrics to stderr |
 
@@ -471,7 +474,7 @@ This project uses a **dual timeout protection** mechanism:
 | Timeout Type | Parameter | Default | Description |
 |--------------|-----------|---------|-------------|
 | **Idle Timeout** | `timeout` | 300s | Triggers when no output for this duration; resets on activity |
-| **Max Duration** | `max_duration` | 1800s | Hard limit from start, forcibly terminates regardless of output |
+| **Max Duration** | `max_duration` | 3600s (codex: 7200s) | Hard limit from start, forcibly terminates regardless of output |
 
 **Error Type Distinction**:
 - `idle_timeout`: Idle timeout (no output)

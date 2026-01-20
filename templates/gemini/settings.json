@@ -13,14 +13,6 @@
         "EXA_API_KEY": "${EXA_API_KEY}"
       }
     },
-    "open-websearch": {
-      "command": "bunx",
-      "args": [
-        "-y",
-        "open-websearch@latest"
-      ],
-      "env": {}
-    },
     "Playwright": {
       "command": "bunx",
       "args": [

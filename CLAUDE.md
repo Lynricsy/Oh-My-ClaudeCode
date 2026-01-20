@@ -36,7 +36,6 @@ Librarian 通过 Gemini CLI 配置的 MCP 提供网络研究能力：
 |-----|------|
 | **context7** | 官方文档查询（快速获取库/框架文档） |
 | **exa** | 主力网络搜索（高质量搜索结果） |
-| **open-websearch** | 免费备选搜索（DuckDuckGo/Bing/Brave） |
 | **Playwright** | 浏览器自动化（headless 模式） |
 | **grep** | 代码搜索（grep.app 开源代码搜索） |
 | **firecrawl** | 网页抓取（深入阅读网页内容） |

@@ -575,6 +575,50 @@ EOF
             write_warning "To install manually: npm install -g uipro-cli && uipro init --ai gemini"
         fi
     fi  # End of UPDATE_MODE check for Step 6.3
+
+    # =========================================================================
+    # Step 6.4: Install Vercel React Best Practices skill
+    # =========================================================================
+    echo ""
+    echo -e "${CYAN}  Installing Vercel React Best Practices skill...${NC}"
+
+    GEMINI_SKILLS_DIR="$HOME/.gemini/skills"
+    REACT_SKILL_DIR="$GEMINI_SKILLS_DIR/react-best-practices"
+    REACT_SKILL_REPO="https://github.com/vercel-labs/agent-skills.git"
+
+    mkdir -p "$GEMINI_SKILLS_DIR"
+
+    if [ -d "$REACT_SKILL_DIR" ]; then
+        if [ "$UPDATE_MODE" = true ]; then
+            write_warning "Updating Vercel React Best Practices skill..."
+            rm -rf "$REACT_SKILL_DIR"
+        else
+            write_success "Vercel React Best Practices skill already installed"
+        fi
+    fi
+
+    if [ ! -d "$REACT_SKILL_DIR" ]; then
+        # Clone only the specific skill folder using sparse checkout
+        TEMP_DIR=$(mktemp -d)
+        set +e
+        git clone --depth 1 --filter=blob:none --sparse "$REACT_SKILL_REPO" "$TEMP_DIR" 2>/dev/null
+        CLONE_EXIT=$?
+        if [ $CLONE_EXIT -eq 0 ]; then
+            cd "$TEMP_DIR"
+            git sparse-checkout set skills/react-best-practices 2>/dev/null
+            if [ -d "skills/react-best-practices" ]; then
+                cp -r "skills/react-best-practices" "$REACT_SKILL_DIR"
+                write_success "Installed Vercel React Best Practices skill"
+            else
+                write_warning "Failed to checkout react-best-practices skill"
+            fi
+            cd - > /dev/null
+        else
+            write_warning "Failed to clone agent-skills repository"
+        fi
+        rm -rf "$TEMP_DIR"
+        set -e
+    fi
 else
     write_warning "gemini CLI not installed, skipping Gemini configuration"
     write_warning "Frontend/Librarian/Looker agents require Gemini CLI"

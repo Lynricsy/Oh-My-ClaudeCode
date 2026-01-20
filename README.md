@@ -297,7 +297,6 @@ claude mcp remove omcc -s user
 **研究能力**（通过 Gemini CLI 配置的 MCP）：
 - `context7`: 官方文档查询
 - `exa`: 网络搜索
-- `open-websearch`: 免费备选搜索（DuckDuckGo/Bing/Brave）
 - `Playwright`: 浏览器自动化（JS 渲染页面）
 - `grep`: 代码搜索（grep.app 开源代码搜索）
 - `firecrawl`: 网页内容抓取
