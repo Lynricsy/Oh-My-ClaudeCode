@@ -515,7 +515,8 @@ async def chore_tool(
     if SESSION_ID:
         cmd.extend(["--session", SESSION_ID])
     
-    # 添加 prompt（包含 System Prompt）
+    # 添加 prompt（使用 -- 结束选项解析，防止 prompt 以 - 开头时被误解析）
+    cmd.append("--")
     cmd.append(full_prompt)
 
     # 执行循环
@@ -547,7 +548,16 @@ async def chore_tool(
                         event_type = line_dict.get("type", "")
 
                         if return_all_messages:
-                            all_messages.append(line_dict)
+                            # 脱敏大内容（tool_result 等）
+                            import copy
+                            safe_dict = copy.deepcopy(line_dict)
+                            # OpenCode 格式：检查 part 中的大内容
+                            part = safe_dict.get("part", {})
+                            if isinstance(part, dict):
+                                text = part.get("text", "")
+                                if isinstance(text, str) and len(text) > 10000:
+                                    part["text"] = text[:1000] + "\n... [truncated] ..."
+                            all_messages.append(safe_dict)
 
                         if event_type == "message":
                             role = line_dict.get("role", "")

@@ -330,7 +330,7 @@ def safe_coder_command(
     timeout: int = 300,
     max_duration: int = 3600,
     prompt: str = "",
-) -> Iterator[Generator[str, None, tuple[Optional[int], int]]]:
+) -> Iterator[tuple[Generator[str, None, None], list[Optional[int]], list[int]]]:
     """安全执行 Coder 命令的上下文管理器
 
     确保在任何情况下（包括异常）都能正确清理子进程。
@@ -408,6 +408,7 @@ def safe_coder_command(
 
         output_queue: queue.Queue[str | None] = queue.Queue()
         raw_output_lines_holder = [0]  # 使用列表以便在嵌套函数中修改
+        exit_code_holder: list[Optional[int]] = [None]  # 用于存储 exit_code
         GRACEFUL_SHUTDOWN_DELAY = 0.3
 
         def is_session_completed(line: str) -> bool:
@@ -440,7 +441,7 @@ def safe_coder_command(
         thread = threading.Thread(target=read_output, daemon=True)
         thread.start()
 
-        def generator() -> Generator[str, None, tuple[Optional[int], int]]:
+        def generator() -> Generator[str, None, None]:
             """生成器：读取输出并处理超时"""
             nonlocal thread
             start_time = time.time()
@@ -500,6 +501,9 @@ def safe_coder_command(
             if timeout_error is not None:
                 raise timeout_error
 
+            # 将 exit_code 存储到 holder 中，避免 StopIteration 问题
+            exit_code_holder[0] = exit_code
+
             while not output_queue.empty():
                 try:
                     line = output_queue.get_nowait()
@@ -508,9 +512,8 @@ def safe_coder_command(
                 except queue.Empty:
                     break
 
-            return (exit_code, raw_output_lines_holder[0])
-
-        yield generator()
+        # 返回 (generator, exit_code_holder, raw_output_lines_holder)
+        yield generator(), exit_code_holder, raw_output_lines_holder
 
     except Exception:
         cleanup()
@@ -703,82 +706,80 @@ async def coder_tool(
         assistant_text_parts: list[str] = []  # 累积所有 assistant 消息的文本（多轮对话拼接）
 
         try:
-            with safe_coder_command(cmd, env, cd, timeout, max_duration, prompt=normalized_prompt) as gen:
-                try:
-                    for line in gen:
-                        last_lines.append(line)
-                        if len(last_lines) > 50:  # 增加到 50 行以便更好的诊断
-                            last_lines.pop(0)
+            with safe_coder_command(cmd, env, cd, timeout, max_duration, prompt=normalized_prompt) as (gen, exit_code_holder, raw_lines_holder):
+                for line in gen:
+                    last_lines.append(line)
+                    if len(last_lines) > 50:  # 增加到 50 行以便更好的诊断
+                        last_lines.pop(0)
 
-                        try:
-                            line_dict = json.loads(line.strip())
-                            msg_type = line_dict.get("type", "")
+                    try:
+                        line_dict = json.loads(line.strip())
+                        msg_type = line_dict.get("type", "")
 
-                            # 收集完整消息（user 消息需要脱敏 tool_result）
-                            if return_all_messages:
-                                if msg_type == "user":
-                                    # 脱敏 user 消息中的 tool_result 内容
-                                    import copy
-                                    safe_dict = copy.deepcopy(line_dict)
-                                    message = safe_dict.get("message", {})
-                                    content = message.get("content")
-                                    if isinstance(content, list):
-                                        for block in content:
-                                            if isinstance(block, dict) and block.get("type") == "tool_result":
-                                                block["content"] = "[truncated]"
-                                    all_messages.append(safe_dict)
-                                else:
-                                    all_messages.append(line_dict)
-
-                            # S0.3: 从 system/init 消息提取 session_id
-                            if msg_type == "system" and line_dict.get("subtype") == "init":
-                                session_id = line_dict.get("session_id")
-
-                            # S0.4: 从 assistant 消息提取文本（多轮对话拼接）
-                            elif msg_type == "assistant":
-                                message = line_dict.get("message", {})
+                        # 收集完整消息（user 消息需要脱敏 tool_result）
+                        if return_all_messages:
+                            if msg_type == "user":
+                                # 脱敏 user 消息中的 tool_result 内容
+                                import copy
+                                safe_dict = copy.deepcopy(line_dict)
+                                message = safe_dict.get("message", {})
                                 content = message.get("content")
-                                # 类型守卫：只处理 list 类型的 content
                                 if isinstance(content, list):
                                     for block in content:
-                                        if isinstance(block, dict):
-                                            if block.get("type") == "text":
-                                                text = block.get("text", "")
-                                                if text:
-                                                    assistant_text_parts.append(text)
+                                        if isinstance(block, dict) and block.get("type") == "tool_result":
+                                            block["content"] = "[truncated]"
+                                all_messages.append(safe_dict)
+                            else:
+                                all_messages.append(line_dict)
 
-                            # 处理 result 类型（stream-json 中可能也有）
-                            elif msg_type == "result":
-                                # stream-json 的 result 可能包含完整结果或仅包含 stats
-                                if "result" in line_dict:
-                                    result_content = line_dict.get("result", "")
-                                # session_id 也可能在 result 中（兼容）
-                                if not session_id and "session_id" in line_dict:
-                                    session_id = line_dict.get("session_id")
-                                if line_dict.get("is_error"):
-                                    had_error = True
-                                    err_message = line_dict.get("result", "") or line_dict.get("error", "")
-                                    error_kind = ErrorKind.UPSTREAM_ERROR
+                        # S0.3: 从 system/init 消息提取 session_id
+                        if msg_type == "system" and line_dict.get("subtype") == "init":
+                            session_id = line_dict.get("session_id")
 
-                            elif msg_type == "error":
+                        # S0.4: 从 assistant 消息提取文本（多轮对话拼接）
+                        elif msg_type == "assistant":
+                            message = line_dict.get("message", {})
+                            content = message.get("content")
+                            # 类型守卫：只处理 list 类型的 content
+                            if isinstance(content, list):
+                                for block in content:
+                                    if isinstance(block, dict):
+                                        if block.get("type") == "text":
+                                            text = block.get("text", "")
+                                            if text:
+                                                assistant_text_parts.append(text)
+
+                        # 处理 result 类型（stream-json 中可能也有）
+                        elif msg_type == "result":
+                            # stream-json 的 result 可能包含完整结果或仅包含 stats
+                            if "result" in line_dict:
+                                result_content = line_dict.get("result", "")
+                            # session_id 也可能在 result 中（兼容）
+                            if not session_id and "session_id" in line_dict:
+                                session_id = line_dict.get("session_id")
+                            if line_dict.get("is_error"):
                                 had_error = True
-                                error_data = line_dict.get("error", {})
-                                err_message = error_data.get("message", str(line_dict))
+                                err_message = line_dict.get("result", "") or line_dict.get("error", "")
                                 error_kind = ErrorKind.UPSTREAM_ERROR
 
-                        except json.JSONDecodeError:
-                            json_decode_errors += 1
-                            continue
-
-                        except Exception as error:
-                            err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        elif msg_type == "error":
                             had_error = True
-                            error_kind = ErrorKind.UNEXPECTED_EXCEPTION
-                            break
-                except StopIteration as e:
-                    # 正确捕获生成器返回值
-                    if isinstance(e.value, tuple) and len(e.value) == 2:
-                        exit_code, raw_output_lines = e.value
+                            error_data = line_dict.get("error", {})
+                            err_message = error_data.get("message", str(line_dict))
+                            error_kind = ErrorKind.UPSTREAM_ERROR
+
+                    except json.JSONDecodeError:
+                        json_decode_errors += 1
+                        continue
+
+                    except Exception as error:
+                        err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
+                        had_error = True
+                        error_kind = ErrorKind.UNEXPECTED_EXCEPTION
+                        break
+                # for 循环结束后，从 holder 中获取 exit_code 和 raw_output_lines
+                exit_code = exit_code_holder[0]
+                raw_output_lines = raw_lines_holder[0]
 
             # 如果没有从 result 获取到内容，拼接所有 assistant 消息的文本
             if not result_content and assistant_text_parts:

@@ -152,8 +152,6 @@ async def codex(
         str,
         "从 ~/.codex/config.toml 加载的配置文件名称",
     ] = "",
-    timeout: Annotated[int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"] = 300,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 7200 秒（2 小时），0 表示无限制"] = 7200,
     max_retries: Annotated[int, "最大重试次数，默认 1（Codex 只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -170,8 +168,6 @@ async def codex(
         model=model,
         yolo=yolo,
         profile=profile,
-        timeout=timeout,
-        max_duration=max_duration,
         max_retries=max_retries,
         log_metrics=log_metrics,
     )
@@ -216,16 +212,12 @@ async def gemini(
         Literal["read-only", "workspace-write", "danger-full-access"],
         Field(description="沙箱策略，默认允许写工作区"),
     ] = "workspace-write",
-    yolo: Annotated[
-        bool,
-        Field(description="无需审批运行所有命令（跳过沙箱），默认 true"),
-    ] = True,
     SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
     model: Annotated[
         str,
-        Field(description="指定模型版本，默认使用 gemini-3-pro-preview"),
+        Field(description="指定模型版本，格式为 provider/model"),
     ] = "",
     timeout: Annotated[int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"] = 300,
     max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时），0 表示无限制"] = 3600,
@@ -237,7 +229,6 @@ async def gemini(
         PROMPT=PROMPT,
         cd=cd,
         sandbox=sandbox,
-        yolo=yolo,
         SESSION_ID=SESSION_ID,
         return_all_messages=return_all_messages,
         return_metrics=return_metrics,

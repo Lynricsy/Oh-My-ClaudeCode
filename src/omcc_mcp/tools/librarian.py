@@ -668,7 +668,8 @@ async def librarian_tool(
 {PROMPT}
 """
 
-    # 添加 prompt
+    # 添加 prompt（使用 -- 结束选项解析，防止 prompt 以 - 开头时被误解析）
+    cmd.append("--")
     cmd.append(full_prompt)
 
     # 执行循环（支持重试）
