@@ -220,7 +220,7 @@ claude mcp remove omcc -s user
 
 ### `reviewer` - 代码审核官
 
-调用 OpenAI Reviewer 进行独立代码审查。
+调用 Codex CLI 进行独立代码审查。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
@@ -385,13 +385,13 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 # OpenCode CLI 代理模型配置
 # 模型格式为 provider/model，需要在 ~/.config/opencode/opencode.jsonc 中配置 provider
 [advisor]
-model = "google/advisor-3-pro-preview"
+model = "google/gemini-3-pro-preview"
 
 [frontend]
-model = "google/advisor-3-pro-preview"
+model = "google/gemini-3-pro-preview"
 
 [librarian]
-model = "google/advisor-3-flash-preview"
+model = "google/gemini-3-flash-preview"
 
 # Looker 多模态分析（直接调用 Gemini API）
 [looker]

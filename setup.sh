@@ -201,7 +201,7 @@ if [ ! -d "$SKILLS_DIR" ]; then
 fi
 
 # List of all skills to install
-SKILLS=("omcc-workflow" "gemini-collaboration" "frontend" "chore" "librarian" "looker")
+SKILLS=("omcc-workflow" "advisor-collaboration" "frontend" "chore" "librarian" "looker")
 
 # Install each skill
 for skill in "${SKILLS[@]}"; do

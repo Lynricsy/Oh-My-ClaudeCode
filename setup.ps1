@@ -339,7 +339,7 @@ Write-Step "Step 4: Installing Skills..."
 $skillsDir = "$env:USERPROFILE\.claude\skills"
 
 # List of all skills to install
-$skills = @("omcc-workflow", "gemini-collaboration", "frontend", "chore", "librarian", "looker")
+$skills = @("omcc-workflow", "advisor-collaboration", "frontend", "chore", "librarian", "looker")
 
 if ($DryRun) {
     if (!(Test-Path $skillsDir)) {
