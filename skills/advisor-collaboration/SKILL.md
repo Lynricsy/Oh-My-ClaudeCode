@@ -39,7 +39,7 @@ description: |
 |------|--------|------|
 | sandbox | workspace-write | 沙箱策略（灵活控制） |
 | yolo | true | 跳过审批 |
-| model | advisor-3-pro-preview | 默认模型 |
+| model | gemini-3-pro-preview | 默认模型 |
 | max_retries | 1 | 自动重试 |
 
 **会话复用**：保存 `SESSION_ID` 保持上下文。

@@ -9,7 +9,7 @@
 | sandbox | string | | 默认 `workspace-write`，灵活控制 |
 | yolo | boolean | | 默认 `true`，跳过审批 |
 | SESSION_ID | string | | 会话 ID，复用保持上下文 |
-| model | string | | 默认 `advisor-3-pro-preview` |
+| model | string | | 默认 `gemini-3-pro-preview` |
 | return_all_messages | boolean | | 调试时设为 True |
 | return_metrics | boolean | | 返回值中包含指标数据 |
 | timeout | int | | 空闲超时（秒），默认 300 |

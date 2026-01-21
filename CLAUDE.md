@@ -82,13 +82,13 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 **OpenCode Agents** (model format: `provider/model`):
 ```toml
 [advisor]
-model = "google/advisor-3-pro-preview"
+model = "google/gemini-3-pro-preview"
 
 [frontend]
-model = "google/advisor-3-pro-preview"
+model = "google/gemini-3-pro-preview"
 
 [librarian]
-model = "google/advisor-3-flash-preview"
+model = "google/gemini-3-flash-preview"
 
 [looker]
 api_key = "your-gemini-api-key"  # Required for Looker

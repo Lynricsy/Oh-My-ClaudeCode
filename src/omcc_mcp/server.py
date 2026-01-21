@@ -69,9 +69,15 @@ async def coder(
     SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
-    timeout: Annotated[int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"] = 300,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时），0 表示无限制"] = 3600,
-    max_retries: Annotated[int, "最大重试次数，默认 0（Coder 有写入副作用，默认不重试）"] = 0,
+    timeout: Annotated[
+        int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"
+    ] = 300,
+    max_duration: Annotated[
+        int, "总时长硬上限（秒），默认 3600 秒（1 小时），0 表示无限制"
+    ] = 3600,
+    max_retries: Annotated[
+        int, "最大重试次数，默认 0（Coder 有写入副作用，默认不重试）"
+    ] = 0,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
     """执行 Coder 代码任务"""
@@ -236,8 +242,12 @@ async def advisor(
         str,
         Field(description="指定模型版本，格式为 provider/model"),
     ] = "",
-    timeout: Annotated[int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"] = 300,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时），0 表示无限制"] = 3600,
+    timeout: Annotated[
+        int, "空闲超时（秒），无输出超过此时间触发超时，默认 300 秒"
+    ] = 300,
+    max_duration: Annotated[
+        int, "总时长硬上限（秒），默认 3600 秒（1 小时），0 表示无限制"
+    ] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
@@ -283,7 +293,7 @@ async def advisor(
     - "为什么 Zod 报这个错误"
 
     **特点**：
-    - 使用 advisor-3-flash 模型（快速、低成本）
+    - 使用 gemini-3-flash 模型（快速、低成本）
     - 默认只读模式，不会修改代码
     - 通过 OpenCode CLI 配置的 MCP 提供研究能力
 
@@ -311,7 +321,9 @@ async def librarian(
     SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
-    timeout: Annotated[int, "空闲超时（秒），默认 120 秒（Librarian 追求快速响应）"] = 120,
+    timeout: Annotated[
+        int, "空闲超时（秒），默认 120 秒（Librarian 追求快速响应）"
+    ] = 120,
     max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时）"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1（只读可安全重试）"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
@@ -446,7 +458,7 @@ async def looker(
     - 外部研究（使用 Librarian）
 
     **特点**：
-    - 使用 advisor-3-pro 模型（强创意和代码能力）
+    - 使用 gemini-3-pro 模型（强创意和代码能力）
     - 设计师视角：关注间距、色彩、微交互
     - 支持多技术栈：React/Vue/Svelte/HTML+Tailwind
 

@@ -30,21 +30,21 @@ CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 
 # ============================================================================
 # OpenCode CLI 相关代理模型配置
-# 模型格式为 provider/model，如 google/advisor-3-pro-preview
+# 模型格式为 provider/model，如 google/gemini-3-pro-preview
 # 需要先在 ~/.config/opencode/opencode.jsonc 中配置对应的 provider
 # ============================================================================
 
 # Advisor 通用代理（架构咨询、第二意见）
 [advisor]
-model = "google/advisor-3-pro-preview"
+model = "google/gemini-3-pro-preview"
 
 # Frontend 前端/UI 代理（设计、样式、动效）
 [frontend]
-model = "google/advisor-3-pro-preview"
+model = "google/gemini-3-pro-preview"
 
 # Librarian 研究代理（代码搜索、文档查询、网络研究）
 [librarian]
-model = "google/advisor-3-flash-preview"
+model = "google/gemini-3-flash-preview"
 
 # ============================================================================
 # Looker 多模态分析代理配置（直接调用 Gemini API）

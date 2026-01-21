@@ -157,7 +157,7 @@ Before starting, ensure you have installed the following tools:
 > *   **Cost Warning**: Using these tools typically involves subscription fees or API usage costs.
 >     *   **Claude Code**: Requires an Anthropic account with billing set up (or 3rd-party integration).
 >     *   **Codex CLI**: Requires an OpenAI account or API credits.
->     *   **Advisor CLI**: Defaults to the `advisor-3-pro-preview` model (may involve Google AI subscription or API limits).
+>     *   **Advisor CLI**: Defaults to the `gemini-3-pro-preview` model (may involve Google AI subscription or API limits).
 >     *   **Coder API**: You are responsible for the API costs of the configured backend model (e.g., Zhipu AI, DeepSeek).
 > *   Please ensure all tools are authenticated and account resources are sufficient before use.
 
@@ -450,7 +450,7 @@ Calls Advisor CLI for code execution, technical consultation, or code review. A 
 | `sandbox` | string | - | `workspace-write` | Sandbox policy, write allowed by default (flexible) |
 | `yolo` | bool | - | `true` | Skip approval, enabled by default |
 | `SESSION_ID` | string | - | `""` | Session ID for multi-turn conversations |
-| `model` | string | - | `advisor-3-pro-preview` | Specify model version |
+| `model` | string | - | `gemini-3-pro-preview` | Specify model version |
 | `return_all_messages` | bool | - | `false` | Whether to return full conversation history |
 | `return_metrics` | bool | - | `false` | Whether to include metrics in return value |
 | `timeout` | int | - | `300` | Idle timeout (seconds) |
@@ -660,7 +660,7 @@ The main items to configure are `prompt_append` and `model` for each agent:
       "prompt_append": "## ⚠️ Identity Confirmation: You are the Reviewer sub-agent..."
     },
     "frontend-ui-ux-engineer": {
-      "model": "google/antigravity-advisor-3-pro-high",
+      "model": "google/antigravity-gemini-3-pro-high",
       "prompt_append": "## ⚠️ Identity Confirmation: You are the Advisor sub-agent..."
     }
   }

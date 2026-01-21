@@ -26,13 +26,16 @@ from pydantic import Field
 # 错误类型定义
 # ============================================================================
 
+
 class CommandNotFoundError(Exception):
     """命令不存在错误"""
+
     pass
 
 
 class CommandTimeoutError(Exception):
     """命令执行超时错误"""
+
     def __init__(self, message: str, is_idle: bool = False):
         super().__init__(message)
         self.is_idle = is_idle  # 标记是否为空闲超时
@@ -42,8 +45,10 @@ class CommandTimeoutError(Exception):
 # 错误类型枚举
 # ============================================================================
 
+
 class ErrorKind:
     """结构化错误类型枚举"""
+
     TIMEOUT = "timeout"  # 总时长超时
     IDLE_TIMEOUT = "idle_timeout"  # 空闲超时（无输出）
     COMMAND_NOT_FOUND = "command_not_found"
@@ -60,6 +65,7 @@ class ErrorKind:
 # 指标收集
 # ============================================================================
 
+
 class MetricsCollector:
     """指标收集器"""
 
@@ -67,7 +73,7 @@ class MetricsCollector:
         self.tool = tool
         self.sandbox = sandbox
         self.prompt_chars = len(prompt)
-        self.prompt_lines = prompt.count('\n') + 1
+        self.prompt_lines = prompt.count("\n") + 1
         self.ts_start = datetime.now(timezone.utc)
         self.ts_end: Optional[datetime] = None
         self.duration_ms: int = 0
@@ -96,7 +102,7 @@ class MetricsCollector:
         self.success = success
         self.error_kind = error_kind
         self.result_chars = len(result)
-        self.result_lines = result.count('\n') + 1 if result else 0
+        self.result_lines = result.count("\n") + 1 if result else 0
         self.exit_code = exit_code
         self.raw_output_lines = raw_output_lines
         self.json_decode_errors = json_decode_errors
@@ -144,6 +150,7 @@ class MetricsCollector:
 # 命令执行
 # ============================================================================
 
+
 def run_reviewer_command(
     cmd: list[str],
     timeout: int = 300,
@@ -168,7 +175,7 @@ def run_reviewer_command(
         CommandNotFoundError: codex CLI 未安装时抛出
         CommandTimeoutError: 命令执行超时时抛出
     """
-    reviewer_path = shutil.which('codex')
+    reviewer_path = shutil.which("codex")
     if not reviewer_path:
         raise CommandNotFoundError(
             "未找到 codex CLI。请确保已安装 Codex CLI 并添加到 PATH。\n"
@@ -184,8 +191,8 @@ def run_reviewer_command(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
-        encoding='utf-8',
-        errors='replace',  # 处理非 UTF-8 字符，避免 UnicodeDecodeError
+        encoding="utf-8",
+        errors="replace",  # 处理非 UTF-8 字符，避免 UnicodeDecodeError
     )
 
     # 通过 stdin 传递 prompt，然后关闭 stdin
@@ -246,15 +253,14 @@ def run_reviewer_command(
         if max_duration > 0 and (now - start_time) >= max_duration:
             timeout_error = CommandTimeoutError(
                 f"codex 执行超时（总时长超过 {max_duration}s），进程已终止。",
-                is_idle=False
+                is_idle=False,
             )
             break
 
         # 检查空闲超时
         if (now - last_activity_time) >= timeout:
             timeout_error = CommandTimeoutError(
-                f"codex 空闲超时（{timeout}s 无输出），进程已终止。",
-                is_idle=True
+                f"codex 空闲超时（{timeout}s 无输出），进程已终止。", is_idle=True
             )
             break
 
@@ -293,8 +299,7 @@ def run_reviewer_command(
             process.wait()
         # 进程等待超时（罕见情况），视为总时长超时
         timeout_error = CommandTimeoutError(
-            f"codex 进程等待超时，进程已终止。",
-            is_idle=False
+            f"codex 进程等待超时，进程已终止。", is_idle=False
         )
     finally:
         thread.join(timeout=5)
@@ -331,7 +336,7 @@ def safe_reviewer_command(
             for line in gen:
                 process_line(line)
     """
-    reviewer_path = shutil.which('codex')
+    reviewer_path = shutil.which("codex")
     if not reviewer_path:
         raise CommandNotFoundError(
             "未找到 codex CLI。请确保已安装 Codex CLI 并添加到 PATH。\n"
@@ -347,8 +352,8 @@ def safe_reviewer_command(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
-        encoding='utf-8',
-        errors='replace',  # 处理非 UTF-8 字符，避免 UnicodeDecodeError
+        encoding="utf-8",
+        errors="replace",  # 处理非 UTF-8 字符，避免 UnicodeDecodeError
     )
 
     thread: Optional[threading.Thread] = None
@@ -441,14 +446,14 @@ def safe_reviewer_command(
                 if max_duration > 0 and (now - start_time) >= max_duration:
                     timeout_error = CommandTimeoutError(
                         f"codex 执行超时（总时长超过 {max_duration}s），进程已终止。",
-                        is_idle=False
+                        is_idle=False,
                     )
                     break
 
                 if (now - last_activity_time) >= timeout:
                     timeout_error = CommandTimeoutError(
                         f"codex 空闲超时（{timeout}s 无输出），进程已终止。",
-                        is_idle=True
+                        is_idle=True,
                     )
                     break
 
@@ -478,8 +483,7 @@ def safe_reviewer_command(
                     process.kill()
                     process.wait()
                 timeout_error = CommandTimeoutError(
-                    f"codex 进程等待超时，进程已终止。",
-                    is_idle=False
+                    f"codex 进程等待超时，进程已终止。", is_idle=False
                 )
             finally:
                 if thread is not None:
@@ -516,6 +520,7 @@ def _filter_last_lines(lines: list[str], max_lines: int = 50) -> list[str]:
     这里只脱敏 tool_result 的 content 字段，保留消息结构和所有其他上下文。
     """
     import copy
+
     filtered = []
     for line in lines:
         try:
@@ -577,6 +582,7 @@ def _build_error_detail(
 # 可重试错误判断
 # ============================================================================
 
+
 def _is_auth_error(text: str) -> bool:
     """检测是否为认证错误
 
@@ -621,6 +627,7 @@ def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
 # ============================================================================
 # 主工具函数
 # ============================================================================
+
 
 async def reviewer_tool(
     PROMPT: Annotated[str, "审核任务描述"],
@@ -705,7 +712,7 @@ async def reviewer_tool(
 1. **代码质量审核**：检查代码可读性、可维护性、潜在 bug
 2. **任务完成度验证**：需求是否完整实现、边界情况是否覆盖
 3. **对齐性检查**：实现是否与原始需求一致
-4. **测试验证**：如果提供了测试命令，请运行相关测试
+4. **测试验证**：如果认为有必要，可以编写命令进行单元测试
 
 **重要限制**：
 - 你可以读取文件和运行测试命令（如 npm test、pytest）
@@ -745,7 +752,9 @@ async def reviewer_tool(
         last_lines: list[str] = []
 
         try:
-            with safe_reviewer_command(cmd, timeout=timeout, max_duration=max_duration, prompt=full_prompt) as (gen, exit_code_holder, raw_lines_holder):
+            with safe_reviewer_command(
+                cmd, timeout=timeout, max_duration=max_duration, prompt=full_prompt
+            ) as (gen, exit_code_holder, raw_lines_holder):
                 for line in gen:
                     last_lines.append(line)
                     if len(last_lines) > 50:
@@ -757,6 +766,7 @@ async def reviewer_tool(
                         # 收集消息（脱敏 tool_result 内容）
                         if return_all_messages:
                             import copy
+
                             safe_dict = copy.deepcopy(line_dict)
                             item = safe_dict.get("item", {})
                             # Reviewer 的 tool_result 在 item 中
@@ -795,7 +805,9 @@ async def reviewer_tool(
 
                         if "error" in line_dict.get("type", ""):
                             error_msg = line_dict.get("message", "")
-                            is_reconnecting = bool(re.match(r'^Reconnecting\.\.\.\s+\d+/\d+$', error_msg))
+                            is_reconnecting = bool(
+                                re.match(r"^Reconnecting\.\.\.\s+\d+/\d+$", error_msg)
+                            )
 
                             if not is_reconnecting:
                                 had_error = True
@@ -888,7 +900,10 @@ async def reviewer_tool(
             success = False
             if not error_kind:
                 error_kind = ErrorKind.EMPTY_RESULT
-            err_message = "未能获取 Reviewer 响应内容。可尝试设置 return_all_messages=True 获取详细信息。\n\n" + err_message
+            err_message = (
+                "未能获取 Reviewer 响应内容。可尝试设置 return_all_messages=True 获取详细信息。\n\n"
+                + err_message
+            )
 
         # 检查退出码
         if exit_code is not None and exit_code != 0 and success:
@@ -974,12 +989,16 @@ async def reviewer_tool(
             "error": final_error,
             "error_kind": error_kind,
             "error_detail": _build_error_detail(
-                message=err_message.split('\n')[0] if err_message else "未知错误",
+                message=err_message.split("\n")[0] if err_message else "未知错误",
                 exit_code=exit_code,
                 last_lines=all_last_lines,
                 json_decode_errors=json_decode_errors,
-                idle_timeout_s=timeout if error_kind == ErrorKind.IDLE_TIMEOUT else None,
-                max_duration_s=max_duration if error_kind == ErrorKind.TIMEOUT else None,
+                idle_timeout_s=(
+                    timeout if error_kind == ErrorKind.IDLE_TIMEOUT else None
+                ),
+                max_duration_s=(
+                    max_duration if error_kind == ErrorKind.TIMEOUT else None
+                ),
                 retries=retries,
             ),
             "duration": metrics.format_duration(),
