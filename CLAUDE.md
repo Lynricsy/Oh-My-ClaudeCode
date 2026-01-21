@@ -1,166 +1,86 @@
-# Oh-My-ClaudeCode (OMCC)
+# CLAUDE.md
 
-> Claude + 多代理协作 MCP 服务器
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 项目定位
+## Project Overview
 
-一个统一的 MCP 服务器，让 Claude (Opus) 作为架构师调度 Coder 执行代码任务、Reviewer 审核代码质量、Advisor 提供专家咨询，形成自动化的多方协作闭环。
+Oh-My-ClaudeCode (OMCC) is a unified MCP server that enables multi-agent collaboration between Claude (Opus) as the architect and specialized agents (Coder, Reviewer, Advisor, Frontend, Chore, Librarian, Looker) for code execution, review, and expert consultation.
 
-## 核心价值
+**Core Architecture**: Claude orchestrates specialized agents through a FastMCP-based server, with session persistence (SESSION_ID) for multi-turn collaboration and structured error handling for automated retry decisions.
 
-| 维度 | 价值 |
-|------|------|
-| **成本优化** | Opus 负责思考（贵但强），Coder 负责执行（量大管饱） |
-| **能力互补** | Opus 补足 Coder 创造力短板，Reviewer 提供独立审核视角，Advisor 提供多元化专家意见 |
-| **质量保障** | 双重审核机制（Claude 初审 + Reviewer 终审） |
-| **全自动闭环** | 拆解 → 执行 → 审核 → 重试，无需人工干预 |
+## Development Commands
 
-## 角色分工
+### Setup & Installation
+```bash
+# Development setup
+uv sync
 
-```
-Claude (Opus)     →  架构师 + 初审官 + 终审官 + 协调者
-Coder (可配置)    →  代码实现者（生成、修改、批量任务）
-Reviewer (OpenAI)    →  独立代码审核者（质量把关）
-Advisor (OpenCode) →  多面手专家（架构设计、第二意见）
-Frontend (OpenCode) → 前端/UI 专家（界面设计、样式、动效）
-Chore (OpenCode)  →  杂务执行者（简单重复任务、批量操作）
-Librarian (OpenCode) → 网络研究专家（文档查询 + 网络搜索 + 代码搜索）
-Looker (OpenCode) → 多模态分析专家（PDF/图片/图表分析）
-```
+# Run MCP server directly
+uv run omcc-mcp
 
-### Librarian 网络研究能力
+# Install as MCP server (user scope)
+claude mcp add omcc -s user --transport stdio -- \
+  uvx --refresh --from git+https://github.com/Lynricsy/Oh-My-ClaudeCode.git omcc-mcp
 
-Librarian 通过 OpenCode CLI 配置的 MCP 提供网络研究能力：
+# Update installation (skip interactive config)
+./setup.sh --update
 
-| MCP | 功能 |
-|-----|------|
-| **context7** | 官方文档查询（快速获取库/框架文档） |
-| **exa** | 主力网络搜索（高质量搜索结果） |
-| **Playwright** | 浏览器自动化（headless 模式） |
-| **grep** | 代码搜索（grep.app 开源代码搜索） |
-| **firecrawl** | 网页抓取（深入阅读网页内容） |
-
-使用场景：
-- "React useEffect 的最佳实践" → context7 + exa
-- "找到 TanStack Query 的 useQuery 实现" → grep.app
-- "为什么 Zod 报这个错误" → exa + grep.app
-- "抓取某网页的完整内容" → Playwright / firecrawl
-
-**注意**：本地代码搜索请使用 Claude 的 Explore 代理
-
-## 项目结构
-
-```
-Oh-My-ClaudeCode/
-├── src/omcc_mcp/             # 源代码
-│   ├── __init__.py
-│   ├── cli.py                # 入口点
-│   ├── server.py             # MCP 服务器主体
-│   ├── config.py             # 配置加载
-│   └── tools/
-│       ├── coder.py          # Coder 工具
-│       ├── reviewer.py          # Reviewer 工具
-│       ├── advisor.py         # Advisor 工具
-│       ├── frontend.py       # Frontend 工具（前端/UI）
-│       ├── chore.py          # Chore 工具（杂务执行）
-│       ├── librarian.py      # Librarian 工具（网络研究）
-│       └── looker.py         # Looker 工具（多模态分析）
-├── skills/                   # Skills 工作流指导
-│   ├── omcc-workflow/        # OMCC 协作流程（Coder/Reviewer）
-│   ├── advisor-collaboration/ # Advisor 协作指南
-│   ├── frontend/             # Frontend 前端/UI 指南
-│   ├── chore/                # Chore 杂务执行指南
-│   ├── librarian/            # Librarian 网络研究指南
-│   └── looker/               # Looker 多模态分析指南
-├── templates/                # 模板文件
-│   └── omcc-global-prompt.md # 全局 CLAUDE.md 模板
-├── cases/                    # 实测案例
-├── pyproject.toml
-├── config.example.toml       # 配置文件示例
-├── setup.sh                  # Unix/macOS 安装脚本
-├── setup.ps1                 # Windows PowerShell 安装脚本
-├── setup.bat                 # Windows 批处理入口
-├── README.md                 # 项目说明（中文）
-├── README_EN.md              # 项目说明（英文）
-└── CLAUDE.md                 # 本文件
+# Uninstall
+claude mcp remove omcc -s user
 ```
 
-## 开发里程碑
-
-| 阶段 | 内容 | 状态 |
-|------|------|------|
-| M0 | 方案设计、技术验证 | ✅ 完成 |
-| M1 | 最小可用版本（coder 工具） | ✅ 完成 |
-| M2 | 集成 reviewer 工具 | ✅ 完成 |
-| M3 | 协作 Prompt 优化 | ✅ 完成 |
-| M4 | 集成 advisor 工具 | ✅ 完成 |
-| M5 | 文档、发布 | ✅ 完成 |
-
-## 技术要点
-
-### MCP 工具
-
-| 工具 | 功能 | 后端 | sandbox | 
-|------|------|------|---------|
-| `coder` | 代码生成/修改 | Claude CLI (可配置) | workspace-write |
-| `reviewer` | 代码审核 | OpenAI Reviewer | read-only |
-| `advisor` | 专家咨询/执行 | OpenCode CLI | workspace-write |
-| `frontend` | 前端/UI 开发 | OpenCode CLI | workspace-write |
-| `chore` | 杂务执行（批量操作） | OpenCode CLI | workspace-write |
-| `librarian` | 网络研究（文档+搜索+GitHub） | OpenCode CLI | read-only |
-| `looker` | 多模态分析（PDF/图片） | OpenCode CLI | read-only |
-
-### 核心特性
-
-#### 结构化错误
-失败时返回 `error_kind` 和 `error_detail`，便于上层决策是否重试：
-```json
-{
-  "success": false,
-  "error": "错误摘要",
-  "error_kind": "timeout | upstream_error | ...",
-  "error_detail": {
-    "message": "错误简述",
-    "exit_code": 1,
-    "last_lines": ["最后20行输出..."],
-    "retries": 0
-  }
-}
+### Testing
+```bash
+# Currently no formal test suite exists
+# Manual testing via Claude Code CLI with test prompts is the primary validation method
 ```
 
-#### 重试策略
-- **Reviewer**：默认允许 1 次重试（只读操作无副作用）
-- **Coder**：默认不重试（有写入副作用），可通过 `max_retries` 显式启用
-- **Advisor**：默认允许 1 次重试
-- **Frontend**：默认允许 1 次重试
-- **Chore**：默认不重试（简单任务一次完成）
-- **Librarian**：默认允许 1 次重试（只读操作无副作用）
-- **Looker**：默认允许 1 次重试（只读操作无副作用）
+## Architecture
 
-#### 可观察性指标
-- `return_metrics=True`：在返回值中包含耗时、Prompt 长度等指标
-- `log_metrics=True`：将指标输出到 stderr（JSONL 格式）
+### Three-Layer Configuration System
 
-#### 命令行参数策略
-- **设置源**：`--setting-sources "project"` 仅加载项目级设置
-- **System Prompt**：`--append-system-prompt` 通过命令行参数追加角色指令
-- **对话 Prompt**：通过 stdin 传递（支持换行符，无长度限制）
+| Layer | Purpose | Priority |
+|-------|---------|----------|
+| **MCP Tools** | Type-safe tool implementations with error handling, retry logic | Required |
+| **Skills** | Workflow guidance (when/how to use tools) via `/skill` commands | Recommended |
+| **Global Prompt** | Enforces collaboration protocol rules | Recommended |
 
-### 配置方案
+### Tool System (7 Specialized Agents)
 
-配置文件路径：`~/.omcc-mcp/config.toml`
+| Tool | Backend | Sandbox | Retry | Purpose |
+|------|---------|---------|-------|---------|
+| `coder` | Claude CLI + Configurable | workspace-write | 0 | Code generation/modification |
+| `reviewer` | Codex CLI (OpenAI) | read-only | 1 | Independent code review |
+| `advisor` | OpenCode CLI | workspace-write | 1 | Architecture/second opinion |
+| `frontend` | OpenCode CLI | workspace-write | 1 | UI/UX development |
+| `chore` | OpenCode CLI | workspace-write | 0 | Batch operations |
+| `librarian` | OpenCode CLI | read-only | 1 | Web research (docs/search/GitHub) |
+| `looker` | Gemini API | read-only | 1 | Multimodal analysis (PDF/images/video/audio) |
 
+**Key Implementation Details**:
+- Tools are implemented in `src/omcc_mcp/tools/` (each ~800-1000 LOC)
+- All tools support `SESSION_ID` for context persistence across multiple calls
+- Structured error responses include `error_kind` (8+ types like `idle_timeout`, `upstream_error`) and `error_detail` with last output lines
+- `return_metrics` flag provides observability (duration, prompt size)
+
+### Configuration
+
+Config file: `~/.omcc-mcp/config.toml`
+
+**Coder (Required)**:
 ```toml
-# ~/.omcc-mcp/config.toml
-
-# Coder 后端配置（claude CLI + 可配置模型）
 [coder]
-api_token = "your-api-token"
-base_url = "https://open.bigmodel.cn/api/anthropic"
+api_token = "your-token"
+base_url = "https://open.bigmodel.cn/api/anthropic"  # Must support Claude Code API
 model = "glm-4.7"
+extended_context = false  # Add [1m] suffix for 1M context window
 
-# OpenCode CLI 代理模型配置
-# 模型格式为 provider/model，需要在 ~/.config/opencode/opencode.jsonc 中配置 provider
+[coder.env]
+CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
+```
+
+**OpenCode Agents** (model format: `provider/model`):
+```toml
 [advisor]
 model = "google/advisor-3-pro-preview"
 
@@ -171,27 +91,147 @@ model = "google/advisor-3-pro-preview"
 model = "google/advisor-3-flash-preview"
 
 [looker]
-model = "google/advisor-3-flash-preview"
+api_key = "your-gemini-api-key"  # Required for Looker
+base_url = "https://generativelanguage.googleapis.com"  # Optional
+model = "gemini-3-flash-preview"  # Optional
 
-# Chore 杂务代理配置
 [chore]
 model = "anthropic/claude-sonnet-4-20250514"
 ```
 
-### 跨平台实现
+Environment variables (Coder only): `CODER_API_TOKEN`, `CODER_BASE_URL`, `CODER_MODEL`
 
-通过 `subprocess.Popen(env=custom_env)` 注入环境变量，无需依赖脚本文件。
+### Skills Installation
 
-## 参考资源
+Skills provide workflow guidance and must be installed separately:
+```bash
+# macOS/Linux
+mkdir -p ~/.claude/skills
+cp -r skills/* ~/.claude/skills/
 
-- [ReviewerMCP](https://github.com/GuDaStudio/reviewermcp) - 核心参考实现
-- [FastMCP](https://github.com/jlowin/fastmcp) - MCP 框架
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)
-- [Codex CLI](https://developers.openai.com/codex/quickstart)
-- [OpenCode CLI](https://opencode.ai/docs)
+# Windows (PowerShell)
+xcopy /E /I "skills\*" "$env:USERPROFILE\.claude\skills\"
+```
 
----
+Skills available:
+- `/omcc-workflow` - Coder/Reviewer collaboration best practices
+- `/advisor-collaboration` - Advisor usage guidance
+- `/frontend` - UI/UX development patterns
+- `/chore` - Batch task execution
+- `/librarian` - Web research strategies
+- `/looker` - Multimodal analysis workflows
 
-> 📅 项目创建: 2026-01-01
-> 📅 重命名为 OMCC: 2026-01-03
-> 📅 重命名为 Oh-My-ClaudeCode: 2026-01-16
+## Code Structure
+
+```
+src/omcc_mcp/
+├── server.py (557 lines)      # FastMCP server, tool registration
+├── config.py (184 lines)      # TOML config + env var loading
+├── cli.py (13 lines)          # Entry point
+└── tools/                     # Tool implementations (6,109 lines total)
+    ├── coder.py (943 lines)   # Subprocess spawn with env injection
+    ├── reviewer.py (994 lines) # Codex CLI wrapper
+    ├── advisor.py (780 lines) # OpenCode CLI wrapper
+    ├── frontend.py (863 lines)
+    ├── chore.py (766 lines)
+    ├── librarian.py (939 lines)
+    └── looker.py (813 lines)
+```
+
+**Implementation Patterns**:
+- All tools use async subprocess (`asyncio.create_subprocess_exec`)
+- Timeout enforcement via `asyncio.wait_for` with idle detection
+- Structured logging to stderr (JSONL format when `log_metrics=True`)
+- Cross-platform env injection (no shell scripts needed)
+
+## Key Technical Decisions
+
+1. **Session Persistence**: SESSION_ID must be stored and reused per role - IDs are role-specific and returned by MCP responses
+2. **Retry Strategy**: Only read-only tools retry by default (Coder/Chore don't due to write side effects)
+3. **Subprocess Approach**: Direct `subprocess.Popen(env=custom_env)` instead of shell scripts for cross-platform compatibility
+4. **Command Line Strategy**:
+   - System prompts via `--append-system-prompt` CLI arg
+   - User prompts via stdin (supports newlines, no length limit)
+   - `--setting-sources "project"` for project-only config
+
+## Development Guidelines
+
+### Adding a New Tool
+
+1. Create `src/omcc_mcp/tools/new_tool.py` following the pattern:
+   ```python
+   async def new_tool_handler(...) -> Dict[str, Any]:
+       # Subprocess spawn
+       # Timeout enforcement
+       # Error handling with structured response
+       return {"success": bool, "SESSION_ID": str, ...}
+   ```
+
+2. Register in `server.py`:
+   ```python
+   from omcc_mcp.tools.new_tool import new_tool_handler
+
+   @mcp.tool(name="new_tool", description="...")
+   async def new_tool(...):
+       return await new_tool_handler(...)
+   ```
+
+3. Add config section to `config.example.toml`
+
+4. Create skill guide in `skills/new-tool/skill.md`
+
+### Code Quality Requirements
+
+- Type annotations required (Pydantic models for complex types)
+- Async/await for all IO operations
+- Structured error returns (never raise exceptions to MCP layer)
+- Cross-platform path handling (use `pathlib.Path`)
+
+## Common Workflows
+
+### Testing MCP Tools
+```bash
+# 1. Start MCP server in dev mode
+uv run omcc-mcp
+
+# 2. Test via Claude Code with test prompts
+# Example: "Use coder to add a hello world function"
+```
+
+### Debugging Configuration Issues
+```bash
+# Check config file exists and is valid TOML
+cat ~/.omcc-mcp/config.toml
+
+# Verify MCP connection
+claude mcp list
+# Should show: omcc: ... - ✓ Connected
+
+# Check stderr logs for error details (when log_metrics=True)
+```
+
+### Updating Documentation
+- `README.md` (Chinese) - User-facing documentation
+- `README_EN.md` - English translation
+- `CLAUDE.md` (this file) - Developer guidance
+- `templates/omcc-global-prompt.md` - Global prompt template for users
+
+## Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `mcp[cli]` | ≥1.20.0 | FastMCP framework |
+| `pydantic` | ≥2.0 | Data validation |
+| Python | ≥3.12 | Runtime requirement |
+
+External CLI tools (installed separately):
+- Claude Code CLI (`claude`) - For Coder tool
+- Codex CLI (`codex`) - For Reviewer tool
+- OpenCode CLI (`opencode`) - For Advisor/Frontend/Chore/Librarian
+
+## Project History
+
+- 2026-01-01: Project created
+- 2026-01-03: Renamed to OMCC
+- 2026-01-16: Renamed to Oh-My-ClaudeCode
+- Current: M5 milestone complete (production-ready)

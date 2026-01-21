@@ -46,9 +46,22 @@ model = "google/advisor-3-pro-preview"
 [librarian]
 model = "google/advisor-3-flash-preview"
 
-# Looker 多模态代理（PDF、图片、图表分析）
+# ============================================================================
+# Looker 多模态分析代理配置（直接调用 Gemini API）
+# ============================================================================
+# Looker 直接调用 Gemini API 进行多模态分析，不依赖 OpenCode CLI
+# 支持分析：PDF、图片、视频、音频等媒体文件
+
 [looker]
-model = "google/advisor-3-flash-preview"
+# API Key（必填）- Gemini API Key 或兼容的 API Key
+api_key = "your-gemini-api-key"
+
+# API 地址（可选，默认使用 Google 官方地址）
+# 如果使用第三方中转站，请填写中转站地址
+base_url = "https://generativelanguage.googleapis.com"
+
+# 模型名称（可选，默认 gemini-3-flash-preview）
+model = "gemini-3-flash-preview"
 
 # ============================================================================
 # Chore 杂务代理配置（使用 OpenCode CLI）

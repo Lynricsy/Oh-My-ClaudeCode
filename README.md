@@ -40,7 +40,7 @@
 | 🎨 **前端专家** | `frontend` | OpenCode CLI | 界面设计、样式、动效 |
 | 🔧 **杂务执行** | `chore` | OpenCode CLI | 批量重命名、格式化等 |
 | 📚 **网络研究** | `librarian` | OpenCode CLI | 文档查询 + 网络搜索 + 代码搜索 |
-| 👁️ **多模态分析** | `looker` | OpenCode CLI | PDF、图片、图表分析 |
+| 👁️ **多模态分析** | `looker` | Gemini API | PDF、图片、视频、音频分析 |
 
 ### 系统架构
 
@@ -305,7 +305,7 @@ claude mcp remove omcc -s user
 
 ### `looker` - 多模态分析专家
 
-调用 OpenCode CLI 分析媒体文件。
+直接调用 Gemini API 分析媒体文件。
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|:----:|--------|------|
@@ -314,11 +314,23 @@ claude mcp remove omcc -s user
 | `cd` | Path | ✅ | - | 工作目录 |
 | `sandbox` | string | | `read-only` | 沙箱策略（只读） |
 | `SESSION_ID` | string | | `""` | 会话 ID |
-| `timeout` | int | | `120` | 空闲超时（秒） |
-| `max_duration` | int | | `3600` | 总时长上限（秒） |
+| `timeout` | int | | `120` | API 超时（秒） |
 | `max_retries` | int | | `1` | 最大重试次数 |
 
-**分析能力**: PDF、图片、图表、架构图、截图
+**分析能力**: PDF、图片、视频、音频、图表、架构图、截图
+
+**支持格式**:
+- 图片: .jpg, .jpeg, .png, .gif, .webp, .bmp
+- PDF: .pdf
+- 视频: .mp4, .mpeg, .mov, .avi, .webm, .mkv, .flv, .wmv, .3gp
+- 音频: .mp3, .wav, .aac, .ogg, .flac, .m4a, .wma
+
+**文件大小限制**: 20MB
+
+**⚠️ 重要限制**:
+- Looker **无法调用任何 MCP 工具**
+- Looker **只能分析指定的单个文件**
+- 如需分析多个文件，需分别调用
 
 ### 沙箱策略
 
@@ -381,8 +393,11 @@ model = "google/advisor-3-pro-preview"
 [librarian]
 model = "google/advisor-3-flash-preview"
 
+# Looker 多模态分析（直接调用 Gemini API）
 [looker]
-model = "google/advisor-3-flash-preview"
+api_key = "your-gemini-api-key"  # 必填
+base_url = "https://generativelanguage.googleapis.com"  # 可选
+model = "gemini-3-flash-preview"  # 可选
 
 # Chore 杂务代理
 [chore]

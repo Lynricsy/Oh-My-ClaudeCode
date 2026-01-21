@@ -31,9 +31,13 @@ DEFAULT_MODELS = {
     "advisor": "google/gemini-3-pro-preview",     # Advisor 默认模型 (OpenCode 格式)
     "frontend": "google/gemini-3-pro-preview",   # Frontend 默认使用 Advisor 3 Pro
     "librarian": "google/gemini-3-flash-preview", # Librarian 默认使用 Advisor 3 Flash
-    "looker": "google/gemini-3-flash-preview",   # Looker 默认使用 Advisor 3 Flash
+    "looker": "gemini-3-flash-preview",          # Looker 默认模型（直接调用 Gemini API）
     "chore": None,                               # Chore 使用 OpenCode 默认模型
 }
+
+# Looker 默认配置
+DEFAULT_LOOKER_BASE_URL = "https://generativelanguage.googleapis.com"
+DEFAULT_LOOKER_MODEL = "gemini-3-flash-preview"
 
 # Coder 默认配置
 DEFAULT_CODER_EXTENDED_CONTEXT = False  # 默认不启用 1m 上下文
@@ -137,6 +141,52 @@ def get_coder_extended_context(config: dict[str, Any] | None = None) -> bool:
     return DEFAULT_CODER_EXTENDED_CONTEXT
 
 
+def get_looker_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """获取 Looker 配置
+
+    Args:
+        config: 配置字典，如果为 None 则自动加载
+
+    Returns:
+        Looker 配置字典，包含 base_url, api_key, model
+    """
+    if config is None:
+        config = get_config()
+
+    looker_config = config.get("looker", {})
+    if not isinstance(looker_config, dict):
+        looker_config = {}
+
+    return {
+        "base_url": looker_config.get("base_url", DEFAULT_LOOKER_BASE_URL),
+        "api_key": looker_config.get("api_key", ""),
+        "model": looker_config.get("model", DEFAULT_LOOKER_MODEL),
+    }
+
+
+def validate_looker_config(config: dict[str, Any] | None = None) -> None:
+    """验证 Looker 配置有效性
+
+    Args:
+        config: 配置字典，如果为 None 则自动加载
+
+    Raises:
+        ConfigError: 配置无效时抛出
+    """
+    looker_config = get_looker_config(config)
+
+    if not looker_config.get("api_key"):
+        raise ConfigError(
+            f"Looker 工具需要配置 API Key！\n\n"
+            f"请在配置文件中添加 looker 配置：{get_config_path()}\n\n"
+            f"配置示例：\n"
+            f"[looker]\n"
+            f"api_key = \"your-gemini-api-key\"\n"
+            f"base_url = \"https://generativelanguage.googleapis.com\"  # 可选\n"
+            f"model = \"gemini-3-flash-preview\"  # 可选\n"
+        )
+
+
 def get_config_example() -> str:
     """获取配置文件示例"""
     return '''# ~/.omcc-mcp/config.toml
@@ -167,8 +217,16 @@ model = "gemini-3-pro"  # Frontend 前端/UI 代理
 [librarian]
 model = "gemini-3-flash"  # Librarian 研究代理（快速、低成本）
 
+# ============================================================================
+# Looker 多模态分析代理配置（直接调用 Gemini API）
+# ============================================================================
 [looker]
-model = "gemini-3-flash"  # Looker 多模态代理（快速、低成本）
+# API Key（必填）
+api_key = "your-gemini-api-key"
+# API 地址（可选，默认使用 Google 官方地址）
+base_url = "https://generativelanguage.googleapis.com"
+# 模型名称（可选）
+model = "gemini-3-flash-preview"
 
 # ============================================================================
 # OpenCode 相关代理配置

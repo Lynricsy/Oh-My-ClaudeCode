@@ -1,48 +1,78 @@
 """Looker 工具实现
 
-多模态分析代理，用于分析 PDF、图片、图表等媒体文件。
-基于 OpenCode CLI，使用 Advisor 3 Flash 模型（擅长多模态分析）。
+多模态分析代理，用于分析 PDF、图片、视频、音频等媒体文件。
+直接调用 Gemini API，使用 inlineData + base64 格式。
 
 主要功能：
 - 分析 PDF 文档，提取文本和结构
 - 描述图片内容，识别 UI 元素
+- 分析视频内容，描述场景和动作
+- 分析音频内容，转录和描述
 - 解释图表、架构图、流程图
-- 从截图中提取信息
 
-后端：OpenCode CLI (https://opencode.ai)
+重要限制：
+- Looker 无法调用 MCP 工具
+- Looker 只能读取指定的单个文件
+- 不适合需要读取多个文件或执行命令的任务
+
+后端：直接调用 Gemini API（需配置 api_key）
 """
 
 from __future__ import annotations
 
+import base64
 import json
-import queue
-import shutil
-import subprocess
+import mimetypes
 import sys
-import threading
 import time
-from contextlib import contextmanager
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated, Any, Dict, Generator, Iterator, List, Literal, Optional
+from typing import Annotated, Any, Dict, Literal, Optional
 
+import httpx
 from pydantic import Field
 
+from omcc_mcp.config import ConfigError, get_looker_config, validate_looker_config
+
 
 # ============================================================================
-# 错误类型定义
+# MIME 类型映射
 # ============================================================================
 
-class CommandNotFoundError(Exception):
-    """命令不存在错误"""
-    pass
+# 支持的媒体类型及其 MIME 类型
+SUPPORTED_MIME_TYPES = {
+    # 图片
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+    # PDF
+    ".pdf": "application/pdf",
+    # 视频
+    ".mp4": "video/mp4",
+    ".mpeg": "video/mpeg",
+    ".mov": "video/quicktime",
+    ".avi": "video/x-msvideo",
+    ".webm": "video/webm",
+    ".mkv": "video/x-matroska",
+    ".flv": "video/x-flv",
+    ".wmv": "video/x-ms-wmv",
+    ".3gp": "video/3gpp",
+    # 音频
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".aac": "audio/aac",
+    ".ogg": "audio/ogg",
+    ".flac": "audio/flac",
+    ".m4a": "audio/mp4",
+    ".wma": "audio/x-ms-wma",
+}
 
-
-class CommandTimeoutError(Exception):
-    """命令执行超时错误"""
-    def __init__(self, message: str, is_idle: bool = False):
-        super().__init__(message)
-        self.is_idle = is_idle
+# 文件大小限制（字节）
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB（base64 后约 27MB）
 
 
 # ============================================================================
@@ -52,15 +82,14 @@ class CommandTimeoutError(Exception):
 class ErrorKind:
     """结构化错误类型枚举"""
     TIMEOUT = "timeout"
-    IDLE_TIMEOUT = "idle_timeout"
-    COMMAND_NOT_FOUND = "command_not_found"
-    UPSTREAM_ERROR = "upstream_error"
-    AUTH_REQUIRED = "auth_required"
-    JSON_DECODE = "json_decode"
-    EMPTY_RESULT = "empty_result"
-    SUBPROCESS_ERROR = "subprocess_error"
-    UNEXPECTED_EXCEPTION = "unexpected_exception"
+    CONFIG_ERROR = "config_error"
     FILE_NOT_FOUND = "file_not_found"
+    FILE_TOO_LARGE = "file_too_large"
+    UNSUPPORTED_FORMAT = "unsupported_format"
+    API_ERROR = "api_error"
+    NETWORK_ERROR = "network_error"
+    EMPTY_RESULT = "empty_result"
+    UNEXPECTED_EXCEPTION = "unexpected_exception"
 
 
 # ============================================================================
@@ -70,32 +99,33 @@ class ErrorKind:
 class MetricsCollector:
     """指标收集器"""
 
-    def __init__(self, tool: str, prompt: str, sandbox: str):
+    def __init__(self, tool: str, prompt: str, file_path: str):
         self.tool = tool
-        self.sandbox = sandbox
         self.prompt_chars = len(prompt)
         self.prompt_lines = prompt.count('\n') + 1
+        self.file_path = file_path
+        self.file_size_bytes = 0
         self.ts_start = datetime.now(timezone.utc)
         self.ts_end: Optional[datetime] = None
         self.duration_ms: int = 0
         self.success: bool = False
         self.error_kind: Optional[str] = None
         self.retries: int = 0
-        self.exit_code: Optional[int] = None
         self.result_chars: int = 0
         self.result_lines: int = 0
-        self.raw_output_lines: int = 0
-        self.json_decode_errors: int = 0
+        self.prompt_tokens: int = 0
+        self.response_tokens: int = 0
+        self.total_tokens: int = 0
 
     def finish(
         self,
         success: bool,
         error_kind: Optional[str] = None,
         result: str = "",
-        exit_code: Optional[int] = None,
-        raw_output_lines: int = 0,
-        json_decode_errors: int = 0,
         retries: int = 0,
+        prompt_tokens: int = 0,
+        response_tokens: int = 0,
+        total_tokens: int = 0,
     ) -> None:
         """完成指标收集"""
         self.ts_end = datetime.now(timezone.utc)
@@ -104,10 +134,10 @@ class MetricsCollector:
         self.error_kind = error_kind
         self.result_chars = len(result)
         self.result_lines = result.count('\n') + 1 if result else 0
-        self.exit_code = exit_code
-        self.raw_output_lines = raw_output_lines
-        self.json_decode_errors = json_decode_errors
         self.retries = retries
+        self.prompt_tokens = prompt_tokens
+        self.response_tokens = response_tokens
+        self.total_tokens = total_tokens
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -116,17 +146,18 @@ class MetricsCollector:
             "ts_end": self.ts_end.isoformat() if self.ts_end else None,
             "duration_ms": self.duration_ms,
             "tool": self.tool,
-            "sandbox": self.sandbox,
             "success": self.success,
             "error_kind": self.error_kind,
             "retries": self.retries,
-            "exit_code": self.exit_code,
+            "file_path": self.file_path,
+            "file_size_bytes": self.file_size_bytes,
             "prompt_chars": self.prompt_chars,
             "prompt_lines": self.prompt_lines,
             "result_chars": self.result_chars,
             "result_lines": self.result_lines,
-            "raw_output_lines": self.raw_output_lines,
-            "json_decode_errors": self.json_decode_errors,
+            "prompt_tokens": self.prompt_tokens,
+            "response_tokens": self.response_tokens,
+            "total_tokens": self.total_tokens,
         }
 
     def format_duration(self) -> str:
@@ -160,29 +191,29 @@ LOOKER_SYSTEM_PROMPT = """# MULTIMODAL LOOKER
 |----------|----------|
 | **PDF** | 提取文本、表格、结构、特定章节内容 |
 | **图片** | 描述布局、UI 元素、文本、颜色方案 |
+| **视频** | 描述场景、动作、对话、关键帧 |
+| **音频** | 转录内容、识别说话者、描述音效 |
 | **图表** | 解释数据趋势、关系、关键数据点 |
 | **架构图** | 解释组件关系、数据流、系统边界 |
 | **截图** | 识别错误信息、UI 状态、功能区域 |
 
 ## 工作方式
 
-1. 接收文件路径和分析目标
+1. 接收文件和分析目标
 2. 深入分析文件内容
 3. 只返回与目标相关的信息
 4. 主代理不处理原始文件，你节省上下文 token
 
-## 使用场景
+## 重要限制
 
-### 适合使用
-- 媒体文件无法作为纯文本读取
-- 需要从文档中提取特定信息或摘要
-- 需要描述图片或图表中的视觉内容
-- 需要分析/提取的数据，而非原始文件内容
+⚠️ **你无法调用任何 MCP 工具**
+⚠️ **你只能分析当前这一个文件**
+⚠️ **你无法读取其他文件或执行命令**
 
-### 不适合使用
-- 源代码或纯文本文件（使用 Read 工具）
-- 需要后续编辑的文件（需要从 Read 获取字面内容）
-- 简单文件读取，不需要解释
+如果分析目标需要：
+- 读取多个文件 → 告知用户需要分别调用
+- 执行命令或脚本 → 告知用户需要使用其他工具
+- 访问网络或数据库 → 告知用户你无法做到
 
 ## 输出规则
 
@@ -195,7 +226,7 @@ LOOKER_SYSTEM_PROMPT = """# MULTIMODAL LOOKER
 
 ```
 <analysis>
-**文件类型**: [PDF/图片/图表/架构图/截图]
+**文件类型**: [PDF/图片/视频/音频/图表/架构图/截图]
 **分析目标**: [用户请求提取的内容]
 </analysis>
 
@@ -203,6 +234,8 @@ LOOKER_SYSTEM_PROMPT = """# MULTIMODAL LOOKER
 [提取的具体内容]
 - 如果是 PDF：文本、表格、结构
 - 如果是图片：描述、UI 元素
+- 如果是视频：场景描述、关键帧
+- 如果是音频：转录内容、音效描述
 - 如果是图表：数据、趋势
 </extracted>
 
@@ -213,263 +246,192 @@ LOOKER_SYSTEM_PROMPT = """# MULTIMODAL LOOKER
 
 ---
 
-## 最终回复要求
-
-**重要**：在你的最终回复中，必须包含完整的分析总结：
-
-1. **分析过程**：简述你如何分析这个文件
-2. **关键发现**：列出提取的核心信息
-3. **最终答案**：直接回答用户的分析目标
-4. **不确定点**：如有信息不完整，明确说明
-
-这样做的原因：调用你的上层 AI 只能看到你的最终回复，无法看到中间的分析过程。
-因此你需要在最终回复中完整总结你的分析结果。
-
 你的输出直接传递给主代理继续工作。"""
 
 
 # ============================================================================
-# 命令执行
+# 辅助函数
 # ============================================================================
 
-@contextmanager
-def safe_looker_command(
-    cmd: list[str],
-    timeout: int = 120,
-    max_duration: int = 3600,  # 最大 1 小时
-    cwd: Optional[Path] = None,
-) -> Iterator[tuple[Generator[str, None, None], list[Optional[int]], list[int]]]:
-    """安全执行 Looker 命令的上下文管理器"""
-    opencode_path = shutil.which('opencode')
-    if not opencode_path:
-        raise CommandNotFoundError(
-            "未找到 opencode CLI。请确保已安装 OpenCode CLI 并添加到 PATH。\n"
-            "安装指南：https://opencode.ai/docs/cli/"
-        )
-    popen_cmd = cmd.copy()
-    popen_cmd[0] = opencode_path
+def get_mime_type(file_path: Path) -> Optional[str]:
+    """获取文件的 MIME 类型"""
+    suffix = file_path.suffix.lower()
+    if suffix in SUPPORTED_MIME_TYPES:
+        return SUPPORTED_MIME_TYPES[suffix]
+    # 尝试使用 mimetypes 模块
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+    return mime_type
 
-    process = subprocess.Popen(
-        popen_cmd,
-        shell=False,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True,
-        encoding='utf-8',
-        errors='replace',
-        cwd=str(cwd) if cwd else None,
+
+def is_supported_file(file_path: Path) -> bool:
+    """检查文件是否支持分析"""
+    mime_type = get_mime_type(file_path)
+    if not mime_type:
+        return False
+    # 检查是否为支持的媒体类型
+    return any(
+        mime_type.startswith(prefix)
+        for prefix in ["image/", "video/", "audio/", "application/pdf"]
     )
 
-    thread: Optional[threading.Thread] = None
 
-    def cleanup() -> None:
-        """清理子进程和线程"""
-        nonlocal thread
-        try:
-            if process.stdin and not process.stdin.closed:
-                process.stdin.close()
-        except (OSError, IOError):
-            pass
-        try:
-            if process.stdout and not process.stdout.closed:
-                process.stdout.close()
-        except (OSError, IOError):
-            pass
-        try:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    try:
-                        process.wait(timeout=2)
-                    except subprocess.TimeoutExpired:
-                        pass
-        except (ProcessLookupError, OSError):
-            pass
-        if thread is not None and thread.is_alive():
-            thread.join(timeout=5)
+def get_file_category(mime_type: str) -> str:
+    """根据 MIME 类型获取文件分类"""
+    if mime_type.startswith("image/"):
+        return "图片"
+    elif mime_type.startswith("video/"):
+        return "视频"
+    elif mime_type.startswith("audio/"):
+        return "音频"
+    elif mime_type == "application/pdf":
+        return "PDF"
+    return "未知"
 
-    try:
-        if process.stdin:
-            try:
-                process.stdin.close()
-            except (BrokenPipeError, OSError):
-                pass
 
-        output_queue: queue.Queue[str | None] = queue.Queue()
-        raw_output_lines_holder = [0]
-        exit_code_holder: list[Optional[int]] = [None]  # 用于存储 exit_code
-        GRACEFUL_SHUTDOWN_DELAY = 0.3
-
-        def is_turn_completed(line: str) -> bool:
-            """检查是否回合完成"""
-            try:
-                data = json.loads(line)
-                return data.get("type") == "turn.completed"
-            except (json.JSONDecodeError, AttributeError, TypeError):
-                return False
-
-        def read_output() -> None:
-            """在单独线程中读取进程输出"""
-            try:
-                if process.stdout:
-                    for line in iter(process.stdout.readline, ""):
-                        stripped = line.strip()
-                        output_queue.put(stripped)
-                        if stripped:
-                            raw_output_lines_holder[0] += 1
-                        if is_turn_completed(stripped):
-                            time.sleep(GRACEFUL_SHUTDOWN_DELAY)
-                            break
-                    process.stdout.close()
-            except (OSError, IOError, ValueError):
-                pass
-            finally:
-                output_queue.put(None)
-
-        thread = threading.Thread(target=read_output, daemon=True)
-        thread.start()
-
-        def generator() -> Generator[str, None, None]:
-            """生成器：读取输出并处理超时"""
-            nonlocal thread
-            start_time = time.time()
-            last_activity_time = time.time()
-            timeout_error: CommandTimeoutError | None = None
-
-            while True:
-                now = time.time()
-
-                if max_duration > 0 and (now - start_time) >= max_duration:
-                    timeout_error = CommandTimeoutError(
-                        f"looker 执行超时（总时长超过 {max_duration}s），进程已终止。",
-                        is_idle=False
-                    )
-                    break
-
-                if (now - last_activity_time) >= timeout:
-                    timeout_error = CommandTimeoutError(
-                        f"looker 空闲超时（{timeout}s 无输出），进程已终止。",
-                        is_idle=True
-                    )
-                    break
-
-                try:
-                    line = output_queue.get(timeout=0.5)
-                    if line is None:
-                        break
-                    last_activity_time = time.time()
-                    if line:
-                        yield line
-                except queue.Empty:
-                    if process.poll() is not None and not thread.is_alive():
-                        break
-
-            if timeout_error is not None:
-                cleanup()
-                raise timeout_error
-
-            exit_code: Optional[int] = None
-            try:
-                exit_code = process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait()
-                timeout_error = CommandTimeoutError(
-                    f"looker 进程等待超时，进程已终止。",
-                    is_idle=False
-                )
-            finally:
-                if thread is not None:
-                    thread.join(timeout=5)
-
-            if timeout_error is not None:
-                raise timeout_error
-
-            # 将 exit_code 存储到 holder 中，避免 StopIteration 问题
-            exit_code_holder[0] = exit_code
-
-            while not output_queue.empty():
-                try:
-                    line = output_queue.get_nowait()
-                    if line is not None:
-                        yield line
-                except queue.Empty:
-                    break
-
-        # 返回 (generator, exit_code_holder, raw_output_lines_holder)
-        yield generator(), exit_code_holder, raw_output_lines_holder
-
-    except Exception:
-        cleanup()
-        raise
-    finally:
-        cleanup()
+def encode_file_to_base64(file_path: Path) -> str:
+    """将文件编码为 base64"""
+    with open(file_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
 
 
 def _build_error_detail(
     message: str,
-    exit_code: Optional[int] = None,
-    last_lines: Optional[list[str]] = None,
-    json_decode_errors: int = 0,
-    idle_timeout_s: Optional[int] = None,
-    max_duration_s: Optional[int] = None,
+    file_path: Optional[str] = None,
+    file_size: Optional[int] = None,
+    mime_type: Optional[str] = None,
+    api_status: Optional[int] = None,
     retries: int = 0,
 ) -> Dict[str, Any]:
     """构建结构化错误详情"""
     detail: Dict[str, Any] = {"message": message}
-    if exit_code is not None:
-        detail["exit_code"] = exit_code
-    if last_lines:
-        detail["last_lines"] = last_lines[-50:]
-    if json_decode_errors > 0:
-        detail["json_decode_errors"] = json_decode_errors
-    if idle_timeout_s is not None:
-        detail["idle_timeout_s"] = idle_timeout_s
-        detail["suggestion"] = "分析任务超时。建议：简化分析目标或使用更小的文件"
-    if max_duration_s is not None:
-        detail["max_duration_s"] = max_duration_s
-        detail["suggestion"] = "分析任务总时长超时。建议：拆分为更小的分析任务"
+    if file_path:
+        detail["file_path"] = file_path
+    if file_size is not None:
+        detail["file_size_bytes"] = file_size
+        detail["file_size_mb"] = round(file_size / (1024 * 1024), 2)
+    if mime_type:
+        detail["mime_type"] = mime_type
+    if api_status is not None:
+        detail["api_status"] = api_status
     if retries > 0:
         detail["retries"] = retries
     return detail
 
 
 # ============================================================================
-# 可重试错误判断
+# Gemini API 调用
 # ============================================================================
 
-def _is_auth_error(text: str) -> bool:
-    """检测是否为认证错误"""
-    text_lower = text.lower()
-    auth_keywords = [
-        "waiting for auth",
-        "failed to login",
-        "authentication",
-        "401",
-        "403",
-        "unauthorized",
-        "api key",
-    ]
-    return any(keyword in text_lower for keyword in auth_keywords)
+async def call_gemini_api(
+    base_url: str,
+    api_key: str,
+    model: str,
+    prompt: str,
+    file_base64: str,
+    mime_type: str,
+    timeout: int = 120,
+) -> Dict[str, Any]:
+    """调用 Gemini API 进行多模态分析
+
+    Args:
+        base_url: API 基础 URL
+        api_key: API Key
+        model: 模型名称
+        prompt: 分析提示词
+        file_base64: 文件的 base64 编码
+        mime_type: 文件的 MIME 类型
+        timeout: 超时时间（秒）
+
+    Returns:
+        API 响应结果
+    """
+    # 构建请求 URL
+    url = f"{base_url.rstrip('/')}/v1beta/models/{model}:generateContent"
+
+    # 构建请求头
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    # 构建请求体（Gemini 原生格式）
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": prompt
+                    },
+                    {
+                        "inlineData": {
+                            "mimeType": mime_type,
+                            "data": file_base64
+                        }
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "maxOutputTokens": 8192
+        },
+        "systemInstruction": {
+            "parts": [
+                {
+                    "text": LOOKER_SYSTEM_PROMPT
+                }
+            ]
+        }
+    }
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response = await client.post(url, headers=headers, json=payload)
+        return {
+            "status_code": response.status_code,
+            "response": response.json() if response.status_code == 200 else None,
+            "error": response.text if response.status_code != 200 else None,
+        }
 
 
-def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
-    """判断错误是否可以重试"""
-    if error_kind == ErrorKind.COMMAND_NOT_FOUND:
-        return False
-    if error_kind == ErrorKind.AUTH_REQUIRED:
-        return False
-    if error_kind == ErrorKind.FILE_NOT_FOUND:
-        return False
-    return True
+def parse_gemini_response(response: Dict[str, Any]) -> Dict[str, Any]:
+    """解析 Gemini API 响应
+
+    Args:
+        response: API 响应
+
+    Returns:
+        解析后的结果，包含 text, prompt_tokens, response_tokens, total_tokens
+    """
+    if not response.get("response"):
+        return {
+            "text": "",
+            "prompt_tokens": 0,
+            "response_tokens": 0,
+            "total_tokens": 0,
+        }
+
+    result = response["response"]
+    candidates = result.get("candidates", [])
+    text = ""
+
+    if candidates:
+        content = candidates[0].get("content", {})
+        parts = content.get("parts", [])
+        if parts:
+            text = parts[0].get("text", "")
+
+    # 提取 token 使用统计
+    usage = result.get("usageMetadata", {})
+    prompt_tokens = usage.get("promptTokenCount", 0)
+    response_tokens = usage.get("candidatesTokenCount", 0)
+    total_tokens = usage.get("totalTokenCount", 0)
+
+    return {
+        "text": text,
+        "prompt_tokens": prompt_tokens,
+        "response_tokens": response_tokens,
+        "total_tokens": total_tokens,
+    }
 
 
 # ============================================================================
@@ -477,7 +439,7 @@ def _is_retryable_error(error_kind: Optional[str], err_message: str) -> bool:
 # ============================================================================
 
 async def looker_tool(
-    file_path: Annotated[str, "要分析的媒体文件路径（PDF/图片/图表等）"],
+    file_path: Annotated[str, "要分析的媒体文件路径（PDF/图片/视频/音频等）"],
     goal: Annotated[str, "分析目标，描述需要从文件中提取什么信息"],
     cd: Annotated[Path, "工作目录"],
     sandbox: Annotated[
@@ -487,34 +449,37 @@ async def looker_tool(
     SESSION_ID: Annotated[str, "会话 ID，用于多轮对话"] = "",
     return_all_messages: Annotated[bool, "是否返回完整消息"] = False,
     return_metrics: Annotated[bool, "是否在返回值中包含指标数据"] = False,
-    timeout: Annotated[int, "空闲超时（秒），默认 120 秒"] = 120,
-    max_duration: Annotated[int, "总时长硬上限（秒），默认 3600 秒（1 小时）"] = 3600,
+    timeout: Annotated[int, "API 超时（秒），默认 120 秒"] = 120,
+    max_duration: Annotated[int, "保留参数，未使用"] = 3600,
     max_retries: Annotated[int, "最大重试次数，默认 1"] = 1,
     log_metrics: Annotated[bool, "是否将指标输出到 stderr"] = False,
 ) -> Dict[str, Any]:
     """执行 Looker 多模态分析任务
 
-    调用 OpenCode CLI 进行媒体文件分析。
+    直接调用 Gemini API 进行媒体文件分析。
 
     **角色定位**：多模态分析专家
     - 📄 PDF 分析：提取文本、表格、结构
     - 🖼️ 图片分析：描述内容、识别 UI 元素
+    - 🎬 视频分析：描述场景、动作、对话
+    - 🔊 音频分析：转录内容、识别说话者
     - 📊 图表分析：解释数据趋势和关系
     - 🏗️ 架构图分析：解释组件关系和数据流
     - 📸 截图分析：识别错误信息、UI 状态
 
-    **特点**：
-    - 使用 Advisor 3 Flash 模型，擅长多模态分析
-    - 默认只读模式，不会修改文件
-    - 节省主代理上下文 token
+    **重要限制**：
+    - ⚠️ Looker 无法调用 MCP 工具
+    - ⚠️ Looker 只能读取指定的单个文件
+    - ⚠️ 不适合需要读取多个文件或执行命令的任务
 
-    **后端**：OpenCode CLI (https://opencode.ai)
+    **后端**：直接调用 Gemini API（需配置 api_key）
 
     **使用场景**：
     - "分析这个 PDF 文档的第二章"
     - "描述这个 UI 截图中的错误信息"
     - "解释这个架构图的数据流"
-    - "从这个图表中提取关键数据点"
+    - "分析这个视频的主要内容"
+    - "转录这段音频的对话"
 
     **Prompt 模板**：
     ```
@@ -523,18 +488,20 @@ async def looker_tool(
     ```
     """
     # 构建完整的分析 prompt
-    full_prompt = f"{LOOKER_SYSTEM_PROMPT}\n\n---\n\n请分析以下文件：\n\n**文件路径**: {file_path}\n\n**分析目标**: {goal}"
+    full_prompt = f"请分析以下文件：\n\n**分析目标**: {goal}"
 
     # 初始化指标收集器
-    metrics = MetricsCollector(tool="looker", prompt=full_prompt, sandbox=sandbox)
+    metrics = MetricsCollector(tool="looker", prompt=full_prompt, file_path=file_path)
+
+    # 生成或复用会话 ID
+    session_id = SESSION_ID if SESSION_ID else str(uuid.uuid4())
+
+    # 解析文件路径
+    file_full_path = cd / file_path if not Path(file_path).is_absolute() else Path(file_path)
 
     # 检查文件是否存在
-    file_full_path = cd / file_path if not Path(file_path).is_absolute() else Path(file_path)
     if not file_full_path.exists():
-        metrics.finish(
-            success=False,
-            error_kind=ErrorKind.FILE_NOT_FOUND,
-        )
+        metrics.finish(success=False, error_kind=ErrorKind.FILE_NOT_FOUND)
         if log_metrics:
             metrics.log_to_stderr()
 
@@ -543,271 +510,198 @@ async def looker_tool(
             "tool": "looker",
             "error": f"文件不存在: {file_full_path}",
             "error_kind": ErrorKind.FILE_NOT_FOUND,
-            "error_detail": _build_error_detail(f"文件不存在: {file_full_path}"),
+            "error_detail": _build_error_detail(
+                f"文件不存在: {file_full_path}",
+                file_path=str(file_full_path),
+            ),
         }
 
-    # 构建 opencode run 命令
-    cmd = ["opencode", "run"]
-    cmd.extend(["--format", "json"])
+    # 检查文件大小
+    file_size = file_full_path.stat().st_size
+    metrics.file_size_bytes = file_size
 
-    # 使用配置的模型（默认 Advisor 3 Flash，擅长多模态）
-    from omcc_mcp.config import get_agent_model
-    model_to_use = get_agent_model("looker")
-    if model_to_use:
-        cmd.extend(["--model", model_to_use])
+    if file_size > MAX_FILE_SIZE:
+        metrics.finish(success=False, error_kind=ErrorKind.FILE_TOO_LARGE)
+        if log_metrics:
+            metrics.log_to_stderr()
 
-    # 附加文件
-    cmd.extend(["--file", str(file_full_path)])
+        return {
+            "success": False,
+            "tool": "looker",
+            "error": f"文件过大: {file_size / (1024 * 1024):.2f}MB，最大支持 {MAX_FILE_SIZE / (1024 * 1024):.0f}MB",
+            "error_kind": ErrorKind.FILE_TOO_LARGE,
+            "error_detail": _build_error_detail(
+                f"文件过大，超过 {MAX_FILE_SIZE / (1024 * 1024):.0f}MB 限制",
+                file_path=str(file_full_path),
+                file_size=file_size,
+            ),
+        }
 
-    # 会话恢复
-    if SESSION_ID:
-        cmd.extend(["--session", SESSION_ID])
+    # 获取 MIME 类型
+    mime_type = get_mime_type(file_full_path)
+    if not mime_type or not is_supported_file(file_full_path):
+        metrics.finish(success=False, error_kind=ErrorKind.UNSUPPORTED_FORMAT)
+        if log_metrics:
+            metrics.log_to_stderr()
 
-    # 添加 prompt（使用 -- 结束选项解析，防止 prompt 以 - 开头时被误解析）
-    cmd.append("--")
-    cmd.append(full_prompt)
+        supported_formats = ", ".join(sorted(SUPPORTED_MIME_TYPES.keys()))
+        return {
+            "success": False,
+            "tool": "looker",
+            "error": f"不支持的文件格式: {file_full_path.suffix}",
+            "error_kind": ErrorKind.UNSUPPORTED_FORMAT,
+            "error_detail": _build_error_detail(
+                f"不支持的文件格式。支持的格式: {supported_formats}",
+                file_path=str(file_full_path),
+                mime_type=mime_type,
+            ),
+        }
 
-    # 执行循环（支持重试）
+    # 获取配置
+    try:
+        validate_looker_config()
+        looker_config = get_looker_config()
+    except ConfigError as e:
+        metrics.finish(success=False, error_kind=ErrorKind.CONFIG_ERROR)
+        if log_metrics:
+            metrics.log_to_stderr()
+
+        return {
+            "success": False,
+            "tool": "looker",
+            "error": str(e),
+            "error_kind": ErrorKind.CONFIG_ERROR,
+            "error_detail": _build_error_detail(str(e)),
+        }
+
+    base_url = looker_config["base_url"]
+    api_key = looker_config["api_key"]
+    model = looker_config["model"]
+
+    # 编码文件
+    try:
+        file_base64 = encode_file_to_base64(file_full_path)
+    except Exception as e:
+        metrics.finish(success=False, error_kind=ErrorKind.UNEXPECTED_EXCEPTION)
+        if log_metrics:
+            metrics.log_to_stderr()
+
+        return {
+            "success": False,
+            "tool": "looker",
+            "error": f"文件读取失败: {e}",
+            "error_kind": ErrorKind.UNEXPECTED_EXCEPTION,
+            "error_detail": _build_error_detail(
+                f"文件读取失败: {e}",
+                file_path=str(file_full_path),
+            ),
+        }
+
+    # 执行 API 调用（支持重试）
     retries = 0
-    last_error: Optional[Dict[str, Any]] = None
-    all_last_lines: list[str] = []
+    last_error: Optional[str] = None
+    result_text = ""
+    prompt_tokens = 0
+    response_tokens = 0
+    total_tokens = 0
+
+    file_category = get_file_category(mime_type)
 
     while retries <= max_retries:
-        all_messages: list[Dict[str, Any]] = []
-        agent_messages = ""
-        had_error = False
-        err_message = ""
-        session_id: Optional[str] = None
-        exit_code: Optional[int] = None
-        raw_output_lines = 0
-        json_decode_errors = 0
-        error_kind: Optional[str] = None
-        last_lines: list[str] = []
-
         try:
-            with safe_looker_command(cmd, timeout=timeout, max_duration=max_duration, cwd=cd) as (gen, exit_code_holder, raw_lines_holder):
-                for line in gen:
-                    last_lines.append(line)
-                    if len(last_lines) > 50:
-                        last_lines.pop(0)
-
-                    try:
-                        line_dict = json.loads(line.strip())
-                        event_type = line_dict.get("type", "")
-
-                        if return_all_messages:
-                            # 脱敏大内容（tool_result 等）
-                            import copy
-                            safe_dict = copy.deepcopy(line_dict)
-                            # OpenCode 格式：检查 part 中的大内容
-                            part = safe_dict.get("part", {})
-                            if isinstance(part, dict):
-                                text = part.get("text", "")
-                                if isinstance(text, str) and len(text) > 10000:
-                                    part["text"] = text[:1000] + "\n... [truncated] ..."
-                            all_messages.append(safe_dict)
-
-                        # 提取 message 事件中的内容（只保留最后一轮回复）
-                        if event_type == "message":
-                            role = line_dict.get("role", "")
-                            content = line_dict.get("content", "")
-                            if role == "assistant" and content:
-                                agent_messages = content  # 覆盖而非累加，只保留最后一轮
-
-                        # 提取 text 事件 (OpenCode 格式)
-                        if event_type == "text":
-                            part = line_dict.get("part", {})
-                            text_content = part.get("text", "")
-                            if text_content:
-                                agent_messages += text_content
-
-                        # message_end 事件标志一轮回复结束
-                        if event_type == "message_end":
-                            pass
-
-                        if event_type == "result":
-                            response = line_dict.get("response", "")
-                            if response:
-                                agent_messages = response  # 覆盖为最终结果
-
-                        if event_type == "init":
-                            if line_dict.get("session_id") is not None:
-                                session_id = line_dict.get("session_id")
-                            if line_dict.get("thread_id") is not None:
-                                session_id = line_dict.get("thread_id")
-
-                        if event_type == "error":
-                            had_error = True
-                            error_msg = line_dict.get("message", str(line_dict))
-                            err_message += "\n\n[looker error] " + error_msg
-                            if _is_auth_error(error_msg):
-                                error_kind = ErrorKind.AUTH_REQUIRED
-                            elif error_kind != ErrorKind.AUTH_REQUIRED:
-                                error_kind = ErrorKind.UPSTREAM_ERROR
-
-                    except json.JSONDecodeError:
-                        json_decode_errors += 1
-                        continue
-
-                    except Exception as error:
-                        err_message += f"\n\n[unexpected error] {error}. Line: {line!r}"
-                        had_error = True
-                        error_kind = ErrorKind.UNEXPECTED_EXCEPTION
-                        break
-                # for 循环结束后，从 holder 中获取 exit_code 和 raw_output_lines
-                exit_code = exit_code_holder[0]
-                raw_output_lines = raw_lines_holder[0]
-
-        except CommandNotFoundError as e:
-            metrics.finish(
-                success=False,
-                error_kind=ErrorKind.COMMAND_NOT_FOUND,
-                retries=retries,
+            response = await call_gemini_api(
+                base_url=base_url,
+                api_key=api_key,
+                model=model,
+                prompt=full_prompt,
+                file_base64=file_base64,
+                mime_type=mime_type,
+                timeout=timeout,
             )
-            if log_metrics:
-                metrics.log_to_stderr()
 
-            return {
-                "success": False,
-                "tool": "looker",
-                "error": str(e),
-                "error_kind": ErrorKind.COMMAND_NOT_FOUND,
-                "error_detail": _build_error_detail(str(e)),
-            }
+            if response["status_code"] == 200:
+                parsed = parse_gemini_response(response)
+                result_text = parsed["text"]
+                prompt_tokens = parsed["prompt_tokens"]
+                response_tokens = parsed["response_tokens"]
+                total_tokens = parsed["total_tokens"]
 
-        except CommandTimeoutError as e:
-            error_kind = ErrorKind.IDLE_TIMEOUT if e.is_idle else ErrorKind.TIMEOUT
-            had_error = True
-            err_message = str(e)
-            success = False
-            if retries < max_retries:
-                all_last_lines = last_lines.copy()
-                last_error = {
-                    "error_kind": error_kind,
-                    "err_message": err_message,
-                    "exit_code": exit_code,
-                    "json_decode_errors": json_decode_errors,
-                    "raw_output_lines": raw_output_lines,
-                }
-                retries += 1
-                time.sleep(0.5 * (2 ** (retries - 1)))
-                continue
+                if result_text:
+                    # 成功
+                    metrics.finish(
+                        success=True,
+                        result=result_text,
+                        retries=retries,
+                        prompt_tokens=prompt_tokens,
+                        response_tokens=response_tokens,
+                        total_tokens=total_tokens,
+                    )
+                    if log_metrics:
+                        metrics.log_to_stderr()
+
+                    result: Dict[str, Any] = {
+                        "success": True,
+                        "tool": "looker",
+                        "SESSION_ID": session_id,
+                        "file_analyzed": str(file_full_path),
+                        "file_type": file_category,
+                        "result": result_text,
+                        "duration": metrics.format_duration(),
+                        "token_usage": {
+                            "prompt": prompt_tokens,
+                            "response": response_tokens,
+                            "total": total_tokens,
+                        },
+                    }
+
+                    if return_metrics:
+                        result["metrics"] = metrics.to_dict()
+
+                    return result
+                else:
+                    last_error = "API 返回空响应"
             else:
-                all_last_lines = last_lines.copy()
-                last_error = {
-                    "error_kind": error_kind,
-                    "err_message": err_message,
-                    "exit_code": exit_code,
-                    "json_decode_errors": json_decode_errors,
-                    "raw_output_lines": raw_output_lines,
-                }
-                break
+                last_error = f"API 错误 (HTTP {response['status_code']}): {response['error']}"
 
-        # 综合判断成功与否
-        success = True
+        except httpx.TimeoutException:
+            last_error = f"API 请求超时 ({timeout}s)"
+        except httpx.NetworkError as e:
+            last_error = f"网络错误: {e}"
+        except Exception as e:
+            last_error = f"意外错误: {type(e).__name__}: {e}"
 
-        if had_error:
-            success = False
+        retries += 1
+        if retries <= max_retries:
+            time.sleep(0.5 * (2 ** (retries - 1)))  # 指数退避
 
-        if not agent_messages:
-            success = False
-            if not error_kind:
-                error_kind = ErrorKind.EMPTY_RESULT
-            err_message = "未能获取 Looker 分析结果。\n\n" + err_message
+    # 所有重试都失败
+    error_kind = ErrorKind.API_ERROR
+    if "超时" in (last_error or ""):
+        error_kind = ErrorKind.TIMEOUT
+    elif "网络" in (last_error or ""):
+        error_kind = ErrorKind.NETWORK_ERROR
+    elif "空响应" in (last_error or ""):
+        error_kind = ErrorKind.EMPTY_RESULT
 
-        if exit_code is not None and exit_code != 0 and success:
-            success = False
-            if not error_kind:
-                error_kind = ErrorKind.SUBPROCESS_ERROR
-            err_message = f"进程退出码非零：{exit_code}\n\n" + err_message
-
-        if success:
-            break
-        else:
-            if _is_retryable_error(error_kind, err_message) and retries < max_retries:
-                all_last_lines = last_lines.copy()
-                last_error = {
-                    "error_kind": error_kind,
-                    "err_message": err_message,
-                    "exit_code": exit_code,
-                    "json_decode_errors": json_decode_errors,
-                    "raw_output_lines": raw_output_lines,
-                }
-                retries += 1
-                time.sleep(0.5 * (2 ** (retries - 1)))
-            else:
-                all_last_lines = last_lines.copy()
-                last_error = {
-                    "error_kind": error_kind,
-                    "err_message": err_message,
-                    "exit_code": exit_code,
-                    "json_decode_errors": json_decode_errors,
-                    "raw_output_lines": raw_output_lines,
-                }
-                break
-
-    # 完成指标收集
     metrics.finish(
-        success=success,
+        success=False,
         error_kind=error_kind,
-        result=agent_messages,
-        exit_code=exit_code,
-        raw_output_lines=raw_output_lines,
-        json_decode_errors=json_decode_errors,
-        retries=retries,
+        retries=retries - 1,
     )
     if log_metrics:
         metrics.log_to_stderr()
 
-    # 构建返回结果
-    if success:
-        result: Dict[str, Any] = {
-            "success": True,
-            "tool": "looker",
-            "SESSION_ID": session_id,
-            "file_analyzed": str(file_full_path),
-            "result": agent_messages,
-            "duration": metrics.format_duration(),
-        }
-    else:
-        if last_error:
-            error_kind = last_error["error_kind"]
-            err_message = last_error["err_message"]
-            exit_code = last_error["exit_code"]
-            json_decode_errors = last_error["json_decode_errors"]
-
-        if error_kind == ErrorKind.AUTH_REQUIRED:
-            auth_hint = """请先配置 OpenCode CLI。
-
-1. 运行 opencode 启动交互式配置
-2. 或者在 ~/.config/opencode/opencode.jsonc 中配置 provider 和 API Key
-
-参考文档：https://opencode.ai/docs/config/
-
-"""
-            err_message = auth_hint + err_message
-
-        result = {
-            "success": False,
-            "tool": "looker",
-            "error": err_message,
-            "error_kind": error_kind,
-            "error_detail": _build_error_detail(
-                message=err_message.split('\n')[0] if err_message else "未知错误",
-                exit_code=exit_code,
-                last_lines=all_last_lines,
-                json_decode_errors=json_decode_errors,
-                idle_timeout_s=timeout if error_kind == ErrorKind.IDLE_TIMEOUT else None,
-                max_duration_s=max_duration if error_kind == ErrorKind.TIMEOUT else None,
-                retries=retries,
-            ),
-            "duration": metrics.format_duration(),
-        }
-
-    if return_all_messages:
-        result["all_messages"] = all_messages
-
-    if return_metrics:
-        result["metrics"] = metrics.to_dict()
-
-    return result
+    return {
+        "success": False,
+        "tool": "looker",
+        "error": last_error or "未知错误",
+        "error_kind": error_kind,
+        "error_detail": _build_error_detail(
+            last_error or "未知错误",
+            file_path=str(file_full_path),
+            file_size=file_size,
+            mime_type=mime_type,
+            retries=retries - 1,
+        ),
+        "duration": metrics.format_duration(),
+    }
