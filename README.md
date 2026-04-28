@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/lynricsy-oh-my-claudecode-badge.png)](https://mseep.ai/app/lynricsy-oh-my-claudecode)
+
 # Oh-My-ClaudeCode (OMCC)
 
 <div align="center">
